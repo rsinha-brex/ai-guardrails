@@ -1,0 +1,38 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node / Next
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Test artifacts (generated; latest.md is kept as canonical evidence)
+backend/tests/eval/results/2*.jsonl
+backend/tests/eval/results/2*.md
+backend/tests/eval/.cache/
+backend/tests/tier4_corpus/results/
+
+# Editor
+.vscode/
+.idea/

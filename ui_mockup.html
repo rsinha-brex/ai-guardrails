@@ -1,0 +1,2557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Guardrails — UI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafaf9;
+    --bg-elevated: #ffffff;
+    --bg-subtle: #f5f5f4;
+    --bg-emerald-tint: #f0f9f4;
+    --border: #e7e5e4;
+    --border-strong: #d6d3d1;
+    --ink: #1c1917;
+    --ink-soft: #44403c;
+    --ink-muted: #78716c;
+    --ink-faint: #a8a29e;
+    --accent: #047857;
+    --accent-soft: #10b981;
+    --accent-tint: #ecfdf5;
+    --rose: #be123c;
+    --rose-tint: #fef2f2;
+    --amber: #b45309;
+    --amber-tint: #fffbeb;
+    --indigo: #4338ca;
+    --indigo-tint: #eef2ff;
+    --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04);
+    --shadow: 0 1px 3px rgba(28, 25, 23, 0.06), 0 1px 2px rgba(28, 25, 23, 0.04);
+    --shadow-lg: 0 10px 32px -4px rgba(28, 25, 23, 0.10), 0 4px 12px rgba(28, 25, 23, 0.05);
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ===================== Document chrome ===================== */
+  .doc-header {
+    padding: 80px 64px 48px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+  .doc-header__inner {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .doc-eyebrow {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 16px;
+  }
+  .doc-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    color: var(--ink);
+  }
+  .doc-title em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .doc-subtitle {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 640px;
+    line-height: 1.55;
+  }
+  .doc-meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .doc-meta-item strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* TOC */
+  .toc {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(250, 250, 249, 0.85);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 64px;
+  }
+  .toc__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    overflow-x: auto;
+  }
+  .toc__brand {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toc__brand-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .toc__links {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .toc__link {
+    font-size: 13px;
+    color: var(--ink-muted);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .toc__link:hover {
+    color: var(--ink);
+    background: var(--bg-subtle);
+  }
+
+  /* Section structure */
+  .section {
+    padding: 80px 64px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section__header {
+    margin-bottom: 48px;
+    max-width: 720px;
+  }
+  .section__number {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .section__title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 36px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .section__description {
+    font-size: 16px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  /* ===================== Mock app frame ===================== */
+  .app-frame {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .app-titlebar {
+    background: var(--bg-subtle);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-titlebar__dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--border-strong);
+  }
+  .app-titlebar__url {
+    flex: 1;
+    text-align: center;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+    background: var(--bg);
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    max-width: 340px;
+    margin: 0 auto;
+  }
+
+  /* App header */
+  .app-header {
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+  }
+  .app-header__top {
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .app-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .app-brand__logo {
+    width: 24px;
+    height: 24px;
+    background: var(--ink);
+    border-radius: 6px;
+    position: relative;
+  }
+  .app-brand__logo::after {
+    content: '';
+    position: absolute;
+    inset: 6px 4px 4px 6px;
+    background: var(--accent-soft);
+    border-radius: 2px;
+  }
+  .app-brand__badge {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    background: var(--bg-subtle);
+    color: var(--ink-muted);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .business-switcher {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px 6px 10px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .business-switcher:hover {
+    background: var(--bg);
+    border-color: var(--border-strong);
+  }
+  .business-switcher__avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .business-switcher__chev {
+    color: var(--ink-faint);
+    font-size: 10px;
+    margin-left: 4px;
+  }
+  .app-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 24px;
+  }
+  .app-tab {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-tab:hover { color: var(--ink); }
+  .app-tab--active {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  .app-tab__count {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    background: var(--bg-subtle);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  /* Page body */
+  .app-body {
+    padding: 32px 24px;
+    background: var(--bg);
+    min-height: 600px;
+  }
+  .app-body--white {
+    background: var(--bg-elevated);
+  }
+  .app-body--split {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 0;
+    padding: 0;
+    min-height: 700px;
+  }
+  .app-body--split > * {
+    padding: 32px 24px;
+  }
+  .app-body--split > *:last-child {
+    border-left: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+
+  /* Page heading */
+  .page-heading {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .page-heading__title {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .page-heading__subtitle {
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+  .page-heading__actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--ink-soft); }
+  .btn-secondary {
+    background: var(--bg-elevated);
+    color: var(--ink);
+    border-color: var(--border-strong);
+  }
+  .btn-secondary:hover {
+    background: var(--bg-subtle);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-muted);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-subtle);
+    color: var(--ink);
+  }
+  .btn-emerald {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-emerald:hover { background: #065f46; }
+  .btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .btn-icon {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* ===================== Rules tab ===================== */
+  .rule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .rule-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: all 0.15s;
+    cursor: pointer;
+    position: relative;
+  }
+  .rule-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+  }
+  .rule-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .rule-card__main {
+    flex: 1;
+    min-width: 0;
+  }
+  .rule-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .rule-card__title {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    letter-spacing: -0.005em;
+  }
+  .rule-card__description {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+  .rule-card__footer {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-family: 'Geist Mono', monospace;
+  }
+  .rule-card__footer-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .rule-card__actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  /* Type badges */
+  .type-badge {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-weight: 500;
+    background: var(--bg-subtle);
+    color: var(--ink-soft);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .type-badge--custom {
+    background: var(--indigo-tint);
+    color: var(--indigo);
+  }
+  .type-badge--output {
+    background: #fef3c7;
+    color: var(--amber);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-family: 'Geist Mono', monospace;
+  }
+
+  /* ===================== Add rule modal ===================== */
+  .modal-overlay {
+    position: relative;
+    background: rgba(28, 25, 23, 0.5);
+    backdrop-filter: blur(8px);
+    padding: 40px;
+    border-radius: var(--radius-lg);
+  }
+  .modal {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 48px -12px rgba(28, 25, 23, 0.18);
+    max-width: 940px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .modal__head {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal__title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .modal__body {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+  }
+  .modal__panel {
+    padding: 28px;
+  }
+  .modal__panel--accent {
+    background: var(--bg-subtle);
+    border-right: 1px solid var(--border);
+  }
+  .modal__section-label {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .modal__section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Template list */
+  .template-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .template-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.12s;
+    border: 1px solid transparent;
+  }
+  .template-item:hover {
+    background: var(--bg-elevated);
+    border-color: var(--border);
+  }
+  .template-item__icon {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-soft);
+  }
+  .template-item__title {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .template-item__hint {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+
+  /* Describe panel */
+  .describe-panel__title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .describe-panel__subtitle {
+    color: var(--ink-muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .describe-textarea {
+    width: 100%;
+    min-height: 130px;
+    padding: 14px 16px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.55;
+    resize: vertical;
+    background: var(--bg-elevated);
+    color: var(--ink);
+    transition: border-color 0.15s;
+  }
+  .describe-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.08);
+  }
+  .describe-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .describe-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .describe-divider {
+    margin: 28px 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--ink-faint);
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .describe-divider::before,
+  .describe-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Compiled preview */
+  .compile-result {
+    background: var(--accent-tint);
+    border: 1px solid #a7f3d0;
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-top: 18px;
+    position: relative;
+  }
+  .compile-result__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .compile-result__check {
+    width: 22px;
+    height: 22px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+  }
+  .compile-result__type {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .compile-result__summary {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .compile-result__fields {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    line-height: 1.7;
+    border: 1px solid #d1fae5;
+  }
+  .compile-result__field-key {
+    color: var(--ink-muted);
+  }
+  .compile-result__field-value {
+    color: var(--ink);
+  }
+  .compile-result__expand {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ===================== Chat tab ===================== */
+  .chat-container {
+    max-width: 760px;
+    margin: 0 auto;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .chat-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .chat-header__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .chat-header__avatar {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .chat-header__info {
+    line-height: 1.3;
+  }
+  .chat-header__name {
+    font-weight: 500;
+  }
+  .chat-header__status {
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-family: 'Geist Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chat-header__status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--accent-soft);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .chat-messages {
+    padding: 24px 20px;
+    min-height: 440px;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg {
+    display: flex;
+    max-width: 78%;
+    animation: msg-in 0.3s ease-out;
+  }
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg--user {
+    align-self: flex-end;
+  }
+  .msg--agent {
+    align-self: flex-start;
+  }
+  .msg__bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .msg--user .msg__bubble {
+    background: var(--ink);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .msg--agent .msg__bubble {
+    background: var(--bg-elevated);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .tool-event {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-family: 'Geist Mono', monospace;
+  }
+  .tool-event--blocked {
+    background: var(--rose-tint);
+    border-color: #fecaca;
+    color: var(--rose);
+  }
+  .tool-event--ok {
+    background: var(--accent-tint);
+    border-color: #a7f3d0;
+    color: var(--accent);
+  }
+  .tool-event__spinner {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .chat-input-row {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    background: var(--bg-elevated);
+  }
+  .chat-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+  }
+  .chat-input:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+  .chat-send {
+    width: 38px;
+    height: 38px;
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .chat-send:hover { background: var(--ink-soft); }
+
+  /* Live audit drawer (chat sidebar) */
+  .live-audit__head {
+    margin-bottom: 16px;
+  }
+  .live-audit__title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .live-audit__subtitle {
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .live-audit__feed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .audit-event {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    position: relative;
+    animation: msg-in 0.3s ease-out;
+  }
+  .audit-event__time {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-bottom: 4px;
+  }
+  .audit-event__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .audit-event__icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+  .audit-event--blocked { border-left: 3px solid var(--rose); }
+  .audit-event--blocked .audit-event__head { color: var(--rose); }
+  .audit-event--ok { border-left: 3px solid var(--accent); }
+  .audit-event--ok .audit-event__head { color: var(--accent); }
+  .audit-event--info { border-left: 3px solid var(--ink-faint); }
+  .audit-event__detail {
+    color: var(--ink-muted);
+    font-size: 11px;
+  }
+  .audit-event__rule {
+    margin-top: 6px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-soft);
+    background: var(--bg-subtle);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  /* ===================== Activity tab ===================== */
+  .filter-bar {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-chip:hover {
+    border-color: var(--border-strong);
+  }
+  .filter-chip__label {
+    color: var(--ink-muted);
+  }
+  .filter-chip__value {
+    font-weight: 500;
+  }
+  .filter-chip--active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+  .filter-chip--active .filter-chip__label,
+  .filter-chip--active .filter-chip__value { color: white; }
+  .filter-search {
+    flex: 1;
+    min-width: 180px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: inherit;
+  }
+
+  /* Conversation list */
+  .conv-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .conv-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .conv-item:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+  }
+  .conv-item__outcome {
+    width: 4px;
+    align-self: stretch;
+    border-radius: 2px;
+    margin: -14px 0 -14px -18px;
+  }
+  .conv-item__outcome--booked { background: var(--accent); }
+  .conv-item__outcome--blocked { background: var(--rose); }
+  .conv-item__outcome--needsinfo { background: var(--amber); }
+  .conv-item__main {
+    flex: 1;
+    min-width: 0;
+  }
+  .conv-item__line1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .conv-item__customer {
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .conv-item__time {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+  .conv-item__line2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .outcome-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'Geist Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .outcome-badge--booked {
+    background: var(--accent-tint);
+    color: var(--accent);
+  }
+  .outcome-badge--blocked {
+    background: var(--rose-tint);
+    color: var(--rose);
+  }
+  .outcome-badge--needsinfo {
+    background: var(--amber-tint);
+    color: var(--amber);
+  }
+  .conv-item__arrow {
+    color: var(--ink-faint);
+    font-family: 'Geist Mono', monospace;
+  }
+
+  /* Drill-in view */
+  .drill-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-muted);
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    text-decoration: none;
+  }
+  .drill-back:hover { color: var(--ink); }
+  .drill-header {
+    margin-bottom: 32px;
+  }
+  .drill-title {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .drill-subtitle {
+    color: var(--ink-muted);
+    font-size: 13px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .drill-subtitle__sep {
+    color: var(--ink-faint);
+  }
+  .drill-context-btn {
+    margin-top: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 6px 10px;
+    border: 1px dashed #a7f3d0;
+    border-radius: var(--radius-sm);
+    background: var(--accent-tint);
+  }
+
+  /* Timeline */
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: var(--border);
+  }
+  .timeline-event {
+    position: relative;
+    padding: 0 0 16px 0;
+  }
+  .timeline-event__node {
+    position: absolute;
+    left: -22px;
+    top: 14px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--border-strong);
+  }
+  .timeline-event--blocked .timeline-event__node {
+    background: var(--rose);
+    border-color: var(--rose);
+    box-shadow: 0 0 0 4px var(--rose-tint);
+  }
+  .timeline-event--ok .timeline-event__node {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-tint);
+  }
+  .timeline-event--user .timeline-event__node {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+  .timeline-event--info .timeline-event__node {
+    background: var(--bg);
+  }
+  .timeline-event__time {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+  .timeline-event__card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .timeline-event--blocked .timeline-event__card {
+    border-color: #fecaca;
+    background: var(--rose-tint);
+  }
+  .timeline-event--ok .timeline-event__card {
+    border-color: #a7f3d0;
+    background: var(--accent-tint);
+  }
+  .timeline-event__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .timeline-event__head-badge {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+    background: rgba(28, 25, 23, 0.06);
+    color: var(--ink-soft);
+  }
+  .timeline-event__body {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  .timeline-event__detail {
+    margin-top: 8px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+  .timeline-event__detail strong {
+    color: var(--ink-soft);
+  }
+  .timeline-event__expand {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-family: 'Geist Mono', monospace;
+    cursor: pointer;
+  }
+
+  /* ===================== Test cases panel ===================== */
+  .test-panel {
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border);
+  }
+  .test-panel__head {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .test-panel__title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .test-panel__subtitle {
+    font-size: 12px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+  .test-panel__body {
+    padding: 20px 24px;
+  }
+  .test-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg-subtle);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .test-summary__stats {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    font-family: 'Geist Mono', monospace;
+  }
+  .test-summary__pass {
+    color: var(--accent);
+  }
+  .test-summary__fail {
+    color: var(--rose);
+  }
+  .test-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .test-case {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .test-case--pass {
+    border-left: 3px solid var(--accent);
+  }
+  .test-case--fail {
+    border-left: 3px solid var(--rose);
+  }
+  .test-case__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .test-case__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .test-case--pass .test-case__status { color: var(--accent); }
+  .test-case--fail .test-case__status { color: var(--rose); }
+  .test-case__message {
+    font-size: 13px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.5;
+    font-style: italic;
+  }
+  .test-case__result {
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--ink-muted);
+    line-height: 1.6;
+  }
+  .test-case__result strong {
+    color: var(--ink-soft);
+  }
+  .test-case__refine {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .add-test {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    color: var(--ink-muted);
+    text-align: center;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .add-test:hover {
+    border-color: var(--ink-soft);
+    color: var(--ink);
+  }
+
+  /* AI suggestion panel */
+  .ai-suggest {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-suggest::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.12) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .ai-suggest__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--amber);
+    position: relative;
+  }
+  .ai-suggest__icon {
+    width: 18px;
+    height: 18px;
+    background: var(--amber);
+    color: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ai-suggest__body {
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .ai-diff {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .ai-diff__line--remove {
+    color: var(--rose);
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
+  .ai-diff__line--add {
+    color: var(--accent);
+    background: rgba(4, 120, 87, 0.06);
+    margin: 0 -12px;
+    padding: 0 12px;
+  }
+  .ai-suggest__actions {
+    display: flex;
+    gap: 6px;
+    position: relative;
+  }
+
+  /* ===================== Footer ===================== */
+  .doc-footer {
+    padding: 64px;
+    background: var(--ink);
+    color: var(--bg);
+    text-align: center;
+  }
+  .doc-footer__title {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+  .doc-footer__text {
+    color: var(--ink-faint);
+    font-size: 13px;
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* Annotations on sections (callouts pointing things out) */
+  .annotation {
+    display: flex;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--bg-subtle);
+    border-left: 3px solid var(--ink);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 20px 0 32px;
+    max-width: 720px;
+  }
+  .annotation__icon {
+    width: 22px;
+    height: 22px;
+    background: var(--ink);
+    color: white;
+    border-radius: 4px;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+  .annotation__body {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+  .annotation__body strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* SVG icon utility */
+  .icon { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.75; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-sm { width: 12px; height: 12px; }
+  .icon-lg { width: 16px; height: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== Document header ===================== -->
+<header class="doc-header">
+  <div class="doc-header__inner">
+    <div class="doc-eyebrow">UI Specification · AI Guardrails</div>
+    <h1 class="doc-title">Designing guardrails for an <em>agentic</em> SaaS.</h1>
+    <p class="doc-subtitle">A walkthrough of every screen — the rules editor where business owners define what the AI agent can and cannot do, the chat where customers (or reviewers) test those rules in real conversations, and the activity feed where owners audit what happened.</p>
+    <div class="doc-meta">
+      <div class="doc-meta-item"><strong>Aesthetic.</strong> Refined operational SaaS</div>
+      <div class="doc-meta-item"><strong>Type.</strong> Fraunces · Geist · Geist Mono</div>
+      <div class="doc-meta-item"><strong>Accent.</strong> Emerald</div>
+      <div class="doc-meta-item"><strong>Surfaces.</strong> 3 tabs + 2 modals</div>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== Sticky TOC ===================== -->
+<nav class="toc">
+  <div class="toc__inner">
+    <div class="toc__brand">
+      <span class="toc__brand-dot"></span>
+      AI Guardrails
+    </div>
+    <div class="toc__links">
+      <a class="toc__link" href="#rules">Rules</a>
+      <a class="toc__link" href="#create">Create rule</a>
+      <a class="toc__link" href="#tests">Test cases</a>
+      <a class="toc__link" href="#chat">Chat</a>
+      <a class="toc__link" href="#activity">Activity</a>
+      <a class="toc__link" href="#drill">Drill-in</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== Section 1: Rules ===================== -->
+<section class="section" id="rules">
+  <div class="section__inner">
+    <div class="section__header">
+      <div class="section__number">01 · Rules tab</div>
+      <h2 class="section__title">The owner sees every rule at a glance.</h2>
+      <p class="section__description">Each rule is a card. Type and active state are visible immediately. Test status and last-test timestamp surface whether the rule is actually working. Hover gives access to Test, Edit, and overflow actions.</p>
+    </div>
+
+    <div class="app-frame">
+      <div class="app-titlebar">
+        <div class="app-titlebar__dot" style="background:#fca5a5"></div>
+        <div class="app-titlebar__dot" style="background:#fcd34d"></div>
+        <div class="app-titlebar__dot" style="background:#86efac"></div>
+        <div class="app-titlebar__url">guardrails.demo/rules</div>
+      </div>
+
+      <div class="app-header">
+        <div class="app-header__top">
+          <div class="app-brand">
+            <div class="app-brand__logo"></div>
+            AI Guardrails
+            <span class="app-brand__badge">Demo</span>
+          </div>
+          <div class="business-switcher">
+            <div class="business-switcher__avatar">D</div>
+            <span>Del-Air</span>
+            <span class="business-switcher__chev">▾</span>
+          </div>
+        </div>
+        <div class="app-tabs">
+          <div class="app-tab app-tab--active">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            Rules <span class="app-tab__count">6</span>
+          </div>
+          <div class="app-tab">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            Chat
+          </div>
+          <div class="app-tab">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM3 9h18M9 21V9"/></svg>
+            Activity <span class="app-tab__count">142</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-body">
+        <div class="page-heading">
+          <div>
+            <h1 class="page-heading__title">Rules</h1>
+            <p class="page-heading__subtitle">Six active rules · last updated 2 days ago</p>
+          </div>
+          <div class="page-heading__actions">
+            <button class="btn btn-secondary">
+              <svg class="icon" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              Import
+            </button>
+            <button class="btn btn-primary">
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add rule
+            </button>
+          </div>
+        </div>
+
+        <div class="rule-list">
+
+          <div class="rule-card">
+            <div class="rule-card__head">
+              <div class="rule-card__main">
+                <div class="rule-card__meta">
+                  <span class="type-badge">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Business hours
+                  </span>
+                  <span class="status-pill"><span class="status-dot"></span>Active</span>
+                </div>
+                <h3 class="rule-card__title">Standard operating hours</h3>
+                <p class="rule-card__description">Open Monday through Saturday from 7 AM to 7 PM. Closed Sunday. Florida time.</p>
+                <div class="rule-card__footer">
+                  <span class="rule-card__footer-item">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    4 tests passing
+                  </span>
+                  <span class="rule-card__footer-item">priority 100</span>
+                  <span class="rule-card__footer-item">applies to book_appointment</span>
+                </div>
+              </div>
+              <div class="rule-card__actions">
+                <button class="btn btn-ghost btn-sm">Test</button>
+                <button class="btn btn-secondary btn-sm">Edit</button>
+                <button class="btn btn-ghost btn-icon btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-card__head">
+              <div class="rule-card__main">
+                <div class="rule-card__meta">
+                  <span class="type-badge">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Service area
+                  </span>
+                  <span class="status-pill"><span class="status-dot"></span>Active</span>
+                </div>
+                <h3 class="rule-card__title">Central Florida service ZIPs</h3>
+                <p class="rule-card__description">Serves Orlando metro, Tampa metro, and surrounding Central Florida. 47 ZIP codes.</p>
+                <div class="rule-card__footer">
+                  <span class="rule-card__footer-item">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    3 tests passing
+                  </span>
+                  <span class="rule-card__footer-item">priority 100</span>
+                </div>
+              </div>
+              <div class="rule-card__actions">
+                <button class="btn btn-ghost btn-sm">Test</button>
+                <button class="btn btn-secondary btn-sm">Edit</button>
+                <button class="btn btn-ghost btn-icon btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-card__head">
+              <div class="rule-card__main">
+                <div class="rule-card__meta">
+                  <span class="type-badge type-badge--custom">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Custom · conditional
+                  </span>
+                  <span class="status-pill"><span class="status-dot"></span>Active</span>
+                </div>
+                <h3 class="rule-card__title">Members-only after-hours emergencies</h3>
+                <p class="rule-card__description">After-hours emergency service is only available to active Comfort Club members. During business hours, the agent should confirm membership before booking emergencies.</p>
+                <div class="rule-card__footer">
+                  <span class="rule-card__footer-item">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    3 tests passing
+                  </span>
+                  <span class="rule-card__footer-item">priority 120</span>
+                  <span class="rule-card__footer-item">uses llm_judge</span>
+                </div>
+              </div>
+              <div class="rule-card__actions">
+                <button class="btn btn-ghost btn-sm">Test</button>
+                <button class="btn btn-secondary btn-sm">Edit</button>
+                <button class="btn btn-ghost btn-icon btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-card__head">
+              <div class="rule-card__main">
+                <div class="rule-card__meta">
+                  <span class="type-badge">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Lead time
+                  </span>
+                  <span class="status-pill"><span class="status-dot"></span>Active</span>
+                </div>
+                <h3 class="rule-card__title">HVAC installs require 48 hours notice</h3>
+                <p class="rule-card__description">New HVAC installations need at least 48 hours of advance notice so the install crew can prep. Bypassed for emergencies.</p>
+                <div class="rule-card__footer">
+                  <span class="rule-card__footer-item">2 tests passing</span>
+                  <span class="rule-card__footer-item">priority 110</span>
+                  <span class="rule-card__footer-item">bypass on state.is_emergency</span>
+                </div>
+              </div>
+              <div class="rule-card__actions">
+                <button class="btn btn-ghost btn-sm">Test</button>
+                <button class="btn btn-secondary btn-sm">Edit</button>
+                <button class="btn btn-ghost btn-icon btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-card__head">
+              <div class="rule-card__main">
+                <div class="rule-card__meta">
+                  <span class="type-badge type-badge--output">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Communication style
+                  </span>
+                  <span class="status-pill"><span class="status-dot"></span>Active</span>
+                </div>
+                <h3 class="rule-card__title">Mention Comfort Club membership benefits</h3>
+                <p class="rule-card__description">When discussing service plans or recurring maintenance, mention the Comfort Club membership benefits to interested customers.</p>
+                <div class="rule-card__footer">
+                  <span class="rule-card__footer-item">applied via system prompt</span>
+                  <span class="rule-card__footer-item">best-effort</span>
+                </div>
+              </div>
+              <div class="rule-card__actions">
+                <button class="btn btn-ghost btn-sm">Test</button>
+                <button class="btn btn-secondary btn-sm">Edit</button>
+                <button class="btn btn-ghost btn-icon btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <div class="annotation__icon">i</div>
+      <div class="annotation__body">
+        <strong>Design intent.</strong> Cards read in a glance because everything operational is on the surface — rule type, active state, test coverage, and applicability. The card hierarchy puts the human-readable description front-and-center; the technical details (priority, applies_to, judge usage) live in the footer where they're available when needed but don't dominate.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== Section 2: Create rule ===================== -->
+<section class="section" id="create">
+  <div class="section__inner">
+    <div class="section__header">
+      <div class="section__number">02 · Create a rule</div>
+      <h2 class="section__title">Two paths. One opinion.</h2>
+      <p class="section__description">A template library on the left for the canonical rule types (business hours, service area, allowed services, eligibility, lead time, communication style). A natural-language describe-your-rule textarea on the right for everything else. The compile step turns prose into structured rules with confidence scores.</p>
+    </div>
+
+    <div class="modal-overlay">
+      <div class="modal">
+        <div class="modal__head">
+          <h3 class="modal__title">Add a new rule</h3>
+          <button class="btn btn-ghost btn-icon">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal__body">
+
+          <!-- Templates -->
+          <div class="modal__panel modal__panel--accent">
+            <div class="modal__section-label">Start from a template</div>
+            <div class="template-list">
+              <div class="template-item">
+                <div class="template-item__icon">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <div class="template-item__title">Business hours</div>
+                  <div class="template-item__hint">When you're open</div>
+                </div>
+              </div>
+              <div class="template-item">
+                <div class="template-item__icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <div>
+                  <div class="template-item__title">Service area</div>
+                  <div class="template-item__hint">ZIPs and regions you serve</div>
+                </div>
+              </div>
+              <div class="template-item">
+                <div class="template-item__icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                </div>
+                <div>
+                  <div class="template-item__title">Allowed services</div>
+                  <div class="template-item__hint">What you do (and don't)</div>
+                </div>
+              </div>
+              <div class="template-item">
+                <div class="template-item__icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                  <div class="template-item__title">Customer eligibility</div>
+                  <div class="template-item__hint">Homeowner, member, etc.</div>
+                </div>
+              </div>
+              <div class="template-item">
+                <div class="template-item__icon">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <div class="template-item__title">Lead time</div>
+                  <div class="template-item__hint">Advance notice required</div>
+                </div>
+              </div>
+              <div class="template-item">
+                <div class="template-item__icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <div>
+                  <div class="template-item__title">Communication style</div>
+                  <div class="template-item__hint">How the agent should speak</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Describe -->
+          <div class="modal__panel">
+            <h4 class="describe-panel__title">Describe a custom rule</h4>
+            <p class="describe-panel__subtitle">Write what you want the agent to do, or not do. The system will compile it into a structured rule.</p>
+
+            <textarea class="describe-textarea" placeholder="e.g., Don't book plumbing after 4 PM unless it's an emergency...">Don't propose same-day HVAC installations. We need at least 48 hours to prepare for installs.</textarea>
+
+            <div class="describe-actions">
+              <p class="describe-hint">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" style="margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Be specific about which services and what action to block.
+              </p>
+              <button class="btn btn-emerald">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 2 L13 9 L22 10 L13 11 L12 18 L11 11 L2 10 L11 9 Z"/></svg>
+                Generate
+              </button>
+            </div>
+
+            <div class="compile-result">
+              <div class="compile-result__head">
+                <div class="compile-result__check">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" style="stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div>
+                  <div class="compile-result__type">LEAD_TIME_MINIMUM · HIGH CONFIDENCE</div>
+                </div>
+              </div>
+              <div class="compile-result__summary">Block HVAC installation bookings less than 48 hours in advance.</div>
+              <div class="compile-result__fields">
+                <div><span class="compile-result__field-key">applies_to:</span> <span class="compile-result__field-value">book_appointment</span></div>
+                <div><span class="compile-result__field-key">service_types:</span> <span class="compile-result__field-value">["hvac_install"]</span></div>
+                <div><span class="compile-result__field-key">minimum_hours:</span> <span class="compile-result__field-value">48</span></div>
+                <div><span class="compile-result__field-key">block_message:</span> <span class="compile-result__field-value">"Our install crew needs at least 48 hours to prep..."</span></div>
+              </div>
+              <div class="compile-result__expand">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                Why this rule type?
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+              <button class="btn btn-ghost">Edit description</button>
+              <button class="btn btn-primary">Save rule</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <div class="annotation__icon">02</div>
+      <div class="annotation__body">
+        <strong>Two paths intentionally.</strong> The templates cover the canonical rules — fast for owners who know what they want. The describe-your-rule textarea handles everything else through a compile step that turns prose into structured rules. The compiled output renders as human-readable prose first, structured fields second, with an expandable "why this type" explanation. Owners always see what their words turned into before saving.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== Section 3: Test cases ===================== -->
+<section class="section" id="tests">
+  <div class="section__inner">
+    <div class="section__header">
+      <div class="section__number">03 · Test the rule</div>
+      <h2 class="section__title">Test-driven rule development.</h2>
+      <p class="section__description">Owners write scenarios — what a customer might say and what the agent should do — and run them against the rule. Failing tests expose the conversation and offer AI-assisted refinement: the system suggests a rule update with a diff the owner approves.</p>
+    </div>
+
+    <div class="app-frame">
+      <div class="app-titlebar">
+        <div class="app-titlebar__dot" style="background:#fca5a5"></div>
+        <div class="app-titlebar__dot" style="background:#fcd34d"></div>
+        <div class="app-titlebar__dot" style="background:#86efac"></div>
+        <div class="app-titlebar__url">guardrails.demo/rules — test panel open</div>
+      </div>
+
+      <div class="app-body--split">
+        <!-- Left: rules list, dimmed -->
+        <div style="background:var(--bg)">
+          <div class="page-heading">
+            <div>
+              <h1 class="page-heading__title">Rules</h1>
+              <p class="page-heading__subtitle">Six active rules</p>
+            </div>
+          </div>
+
+          <div class="rule-list">
+            <div class="rule-card" style="opacity:0.6">
+              <div class="rule-card__head">
+                <div class="rule-card__main">
+                  <div class="rule-card__meta">
+                    <span class="type-badge">Business hours</span>
+                    <span class="status-pill"><span class="status-dot"></span>Active</span>
+                  </div>
+                  <h3 class="rule-card__title">Standard operating hours</h3>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule-card" style="border-color:var(--ink);box-shadow:var(--shadow)">
+              <div class="rule-card__head">
+                <div class="rule-card__main">
+                  <div class="rule-card__meta">
+                    <span class="type-badge type-badge--custom">Custom · conditional</span>
+                    <span class="status-pill"><span class="status-dot"></span>Active</span>
+                  </div>
+                  <h3 class="rule-card__title">Members-only after-hours emergencies</h3>
+                  <p class="rule-card__description">After-hours emergency service is only available to active Comfort Club members.</p>
+                  <div class="rule-card__footer">
+                    <span class="rule-card__footer-item" style="color:var(--rose)">1 failing</span>
+                    <span class="rule-card__footer-item">2 passing</span>
+                    <span class="rule-card__footer-item">tested 2m ago</span>
+                  </div>
+                </div>
+                <div class="rule-card__actions">
+                  <button class="btn btn-primary btn-sm">Test</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="rule-card" style="opacity:0.6">
+              <div class="rule-card__head">
+                <div class="rule-card__main">
+                  <div class="rule-card__meta">
+                    <span class="type-badge">Lead time</span>
+                  </div>
+                  <h3 class="rule-card__title">HVAC installs require 48 hours notice</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: test panel -->
+        <div class="test-panel" style="padding:0">
+          <div class="test-panel__head">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <h3 class="test-panel__title">Test cases</h3>
+              <button class="btn btn-ghost btn-icon btn-sm">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <p class="test-panel__subtitle">Members-only after-hours emergencies · 3 scenarios</p>
+          </div>
+
+          <div class="test-panel__body">
+            <div class="test-summary">
+              <div class="test-summary__stats">
+                <span class="test-summary__pass">2 pass</span>
+                <span class="test-summary__fail">1 fail</span>
+              </div>
+              <button class="btn btn-primary btn-sm">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run all
+              </button>
+            </div>
+
+            <div class="test-list">
+
+              <div class="test-case test-case--pass">
+                <div class="test-case__head">
+                  <span class="test-case__status">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" style="stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Pass
+                  </span>
+                  <span style="font-size:10px;color:var(--ink-faint);font-family:'Geist Mono',monospace">3.2s</span>
+                </div>
+                <p class="test-case__message">"My AC died at 11 PM and I'm not a member, can someone come out?"</p>
+                <div class="test-case__result">
+                  <div><strong>Expect:</strong> block · <strong>Got:</strong> block</div>
+                  <div style="margin-top:4px">Agent: "After-hours emergency service is for members only..."</div>
+                </div>
+              </div>
+
+              <div class="test-case test-case--pass">
+                <div class="test-case__head">
+                  <span class="test-case__status">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" style="stroke-width:2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Pass
+                  </span>
+                  <span style="font-size:10px;color:var(--ink-faint);font-family:'Geist Mono',monospace">2.8s</span>
+                </div>
+                <p class="test-case__message">"Hi, I'm a Comfort Club member and need help tonight, my AC is out."</p>
+                <div class="test-case__result">
+                  <div><strong>Expect:</strong> allow · <strong>Got:</strong> allow</div>
+                </div>
+              </div>
+
+              <div class="test-case test-case--fail">
+                <div class="test-case__head">
+                  <span class="test-case__status">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" style="stroke-width:2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Fail
+                  </span>
+                  <span style="font-size:10px;color:var(--ink-faint);font-family:'Geist Mono',monospace">4.1s</span>
+                </div>
+                <p class="test-case__message">"AC isn't working, when's your soonest?"</p>
+                <div class="test-case__result">
+                  <div><strong>Expect:</strong> ask for membership · <strong>Got:</strong> allow</div>
+                  <div style="margin-top:4px">Rule didn't fire — request came during business hours.</div>
+                </div>
+
+                <div class="test-case__refine">
+                  <div class="ai-suggest">
+                    <div class="ai-suggest__head">
+                      <div class="ai-suggest__icon">
+                        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2 L13 9 L22 10 L13 11 L12 18 L11 11 L2 10 L11 9 Z"/></svg>
+                      </div>
+                      Suggested rule update
+                    </div>
+                    <p class="ai-suggest__body">The test asked about availability without mentioning emergency status. Your rule only fires for after-hours requests. I've expanded it to also check membership when an emergency is implied during business hours.</p>
+                    <div class="ai-diff">
+                      <div>Members-only after-hours emergencies. Block</div>
+                      <div class="ai-diff__line--remove">after-hours emergency service for non-members.</div>
+                      <div class="ai-diff__line--add">after-hours emergency service for non-members.</div>
+                      <div class="ai-diff__line--add">For emergency requests during business hours,</div>
+                      <div class="ai-diff__line--add">confirm Comfort Club membership before booking.</div>
+                    </div>
+                    <div class="ai-suggest__actions">
+                      <button class="btn btn-emerald btn-sm">Apply changes</button>
+                      <button class="btn btn-ghost btn-sm">Modify</button>
+                      <button class="btn btn-ghost btn-sm">Reject</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="add-test">
+              <svg class="icon" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add a test case
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <div class="annotation__icon">03</div>
+      <div class="annotation__body">
+        <strong>Test-driven rule development.</strong> Each rule has its own test suite. Owners write scenarios in natural language ("what a customer would say" + "what the agent should do"). Failing tests expose the conversation transcript and offer AI-assisted refinement — a diff the owner reviews and applies. This makes the rules editor a real development environment, not just a configuration form.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== Section 4: Chat ===================== -->
+<section class="section" id="chat">
+  <div class="section__inner">
+    <div class="section__header">
+      <div class="section__number">04 · Chat as customer</div>
+      <h2 class="section__title">The guardrails, in action.</h2>
+      <p class="section__description">Reviewers act as customers. The agent streams responses in real time. Tool calls render inline as small pill indicators showing what the agent is doing — looking up rules, checking availability, blocking a booking. The live audit drawer on the right shows the same events from the business owner's perspective.</p>
+    </div>
+
+    <div class="app-frame">
+      <div class="app-titlebar">
+        <div class="app-titlebar__dot" style="background:#fca5a5"></div>
+        <div class="app-titlebar__dot" style="background:#fcd34d"></div>
+        <div class="app-titlebar__dot" style="background:#86efac"></div>
+        <div class="app-titlebar__url">guardrails.demo/chat</div>
+      </div>
+
+      <div class="app-body--split">
+        <!-- Chat -->
+        <div style="background:var(--bg);padding:32px 24px">
+          <div class="chat-container">
+            <div class="chat-header">
+              <div class="chat-header__title">
+                <div class="chat-header__avatar">D</div>
+                <div class="chat-header__info">
+                  <div class="chat-header__name">Del-Air agent</div>
+                  <div class="chat-header__status">Live</div>
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-sm">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                Reset
+              </button>
+            </div>
+
+            <div class="chat-messages">
+              <div class="msg msg--user">
+                <div class="msg__bubble">Hi, I need a plumber to come out Sunday morning. AC isn't related, just need leak fixed.</div>
+              </div>
+
+              <div class="tool-event">
+                <span class="tool-event__spinner"></span>
+                Looking up rules for book_appointment
+              </div>
+
+              <div class="tool-event tool-event--blocked">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                book_appointment blocked · Business hours
+              </div>
+
+              <div class="msg msg--agent">
+                <div class="msg__bubble">Thanks for reaching out! Unfortunately we're closed on Sundays — we're open Monday through Saturday from 7 AM to 7 PM. Could we look at Monday morning instead?</div>
+              </div>
+
+              <div class="msg msg--user">
+                <div class="msg__bubble">Saturday at 8 AM works.</div>
+              </div>
+
+              <div class="tool-event tool-event--ok">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                check_availability · Saturday 8 AM available
+              </div>
+
+              <div class="msg msg--agent">
+                <div class="msg__bubble">Saturday at 8 AM works. What's the ZIP code where you need service?</div>
+              </div>
+            </div>
+
+            <div class="chat-input-row">
+              <textarea class="chat-input" rows="1" placeholder="Type your message..."></textarea>
+              <button class="chat-send">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live audit drawer -->
+        <div>
+          <div class="live-audit__head">
+            <h4 class="live-audit__title">Live activity</h4>
+            <p class="live-audit__subtitle">Events from this conversation, as they happen.</p>
+          </div>
+
+          <div class="live-audit__feed">
+            <div class="audit-event audit-event--info">
+              <div class="audit-event__time">12:32:08</div>
+              <div class="audit-event__head">
+                <svg class="icon icon-sm audit-event__icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                Customer message
+              </div>
+              <div class="audit-event__detail">"Hi, I need a plumber to come out Sunday morning..."</div>
+            </div>
+
+            <div class="audit-event audit-event--info">
+              <div class="audit-event__time">12:32:09</div>
+              <div class="audit-event__head">
+                <svg class="icon icon-sm audit-event__icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Rule lookup
+              </div>
+              <div class="audit-event__detail">Returned 6 rules for book_appointment</div>
+            </div>
+
+            <div class="audit-event audit-event--blocked">
+              <div class="audit-event__time">12:32:10</div>
+              <div class="audit-event__head">
+                <svg class="icon icon-sm audit-event__icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                Blocked · book_appointment
+              </div>
+              <div class="audit-event__detail">Sunday 9 AM · service is closed</div>
+              <div class="audit-event__rule">rule: standard_business_hours</div>
+            </div>
+
+            <div class="audit-event audit-event--info">
+              <div class="audit-event__time">12:32:18</div>
+              <div class="audit-event__head">
+                <svg class="icon icon-sm audit-event__icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                Customer message
+              </div>
+              <div class="audit-event__detail">"Saturday at 8 AM works."</div>
+            </div>
+
+            <div class="audit-event audit-event--ok">
+              <div class="audit-event__time">12:32:19</div>
+              <div class="audit-event__head">
+                <svg class="icon icon-sm audit-event__icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                check_availability · ok
+              </div>
+              <div class="audit-event__detail">Saturday 8 AM available</div>
+            </div>
+
+            <div class="audit-event audit-event--info">
+              <div class="audit-event__time">12:32:20</div>
+              <div class="audit-event__head">
+                <svg class="icon icon-sm audit-event__icon" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                request_information · address_zip
+              </div>
+              <div class="audit-event__detail">Agent asked customer for ZIP</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="annotation">
+      <div class="annotation__icon">04</div>
+      <div class="annotation__body">
+        <strong>Tool calls are part of the conversation.</strong> Each tool the agent invokes renders as an inline pill — a small visible marker that says "the agent is doing something" or "the agent was blocked." This makes the system's reasoning visible without leaving the chat interface. The live audit drawer on the right is the same data, viewed from the business owner's perspective.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== Section 5: Activity ===================== -->
+<section class="section" id="activity">
+  <div class="section__inner">
+    <div class="section__header">
+      <div class="section__number">05 · Activity feed</div>
+      <h2 class="section__title">Every conversation, every event.</h2>
+      <p class="section__description">Activity is filtered by outcome, by rule, by tool, by date, by customer. The owner finds the conversation that matters and drills in. The list itself is dense but legible: customer, outcome, time, summary.</p>
+    </div>
+
+    <div class="app-frame">
+      <div class="app-titlebar">
+        <div class="app-titlebar__dot" style="background:#fca5a5"></div>
+        <div class="app-titlebar__dot" style="background:#fcd34d"></div>
+        <div class="app-titlebar__dot" style="background:#86efac"></div>
+        <div class="app-titlebar__url">guardrails.demo/activity</div>
+      </div>
+
+      <div class="app-body">
+        <div class="page-heading">
+          <div>
+            <h1 class="page-heading__title">Activity</h1>
+            <p class="page-heading__subtitle">142 conversations in the last 30 days</p>
+          </div>
+          <div class="page-heading__actions">
+            <button class="btn btn-secondary">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-chip filter-chip--active">
+            <span class="filter-chip__label">Outcome:</span>
+            <span class="filter-chip__value">Blocked</span>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          <div class="filter-chip">
+            <span class="filter-chip__label">Rule:</span>
+            <span class="filter-chip__value">Any</span>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="filter-chip">
+            <span class="filter-chip__label">Tool:</span>
+            <span class="filter-chip__value">Any</span>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="filter-chip">
+            <span class="filter-chip__label">Date:</span>
+            <span class="filter-chip__value">Last 7 days</span>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <input type="text" class="filter-search" placeholder="Search customer or message...">
+        </div>
+
+        <div class="conv-list">
+
+          <div class="conv-item">
+            <div class="conv-item__outcome conv-item__outcome--blocked"></div>
+            <div class="conv-item__main">
+              <div class="conv-item__line1">
+                <span class="conv-item__customer">Customer #b1d8</span>
+                <span class="conv-item__time">1:47 PM today</span>
+              </div>
+              <div class="conv-item__line2">
+                <span class="outcome-badge outcome-badge--blocked">Blocked</span>
+                <span>Sunday 9 AM plumbing · blocked by Business hours · 5 events</span>
+              </div>
+            </div>
+            <span class="conv-item__arrow">→</span>
+          </div>
+
+          <div class="conv-item">
+            <div class="conv-item__outcome conv-item__outcome--blocked"></div>
+            <div class="conv-item__main">
+              <div class="conv-item__line1">
+                <span class="conv-item__customer">Customer #c2f1</span>
+                <span class="conv-item__time">11:14 AM today</span>
+              </div>
+              <div class="conv-item__line2">
+                <span class="outcome-badge outcome-badge--blocked">Blocked</span>
+                <span>ZIP 33701 · outside service area · 4 events</span>
+              </div>
+            </div>
+            <span class="conv-item__arrow">→</span>
+          </div>
+
+          <div class="conv-item">
+            <div class="conv-item__outcome conv-item__outcome--blocked"></div>
+            <div class="conv-item__main">
+              <div class="conv-item__line1">
+                <span class="conv-item__customer">Customer #e9a2</span>
+                <span class="conv-item__time">9:32 AM today</span>
+              </div>
+              <div class="conv-item__line2">
+                <span class="outcome-badge outcome-badge--blocked">Blocked</span>
+                <span>Same-day HVAC install · blocked by Lead time · 6 events</span>
+              </div>
+            </div>
+            <span class="conv-item__arrow">→</span>
+          </div>
+
+          <div class="conv-item">
+            <div class="conv-item__outcome conv-item__outcome--blocked"></div>
+            <div class="conv-item__main">
+              <div class="conv-item__line1">
+                <span class="conv-item__customer">Customer #4f7c</span>
+                <span class="conv-item__time">Yesterday, 4:18 PM</span>
+              </div>
+              <div class="conv-item__line2">
+                <span class="outcome-badge outcome-badge--blocked">Blocked</span>
+                <span>Commercial electrical request · service not offered · 3 events</span>
+              </div>
+            </div>
+            <span class="conv-item__arrow">→</span>
+          </div>
+
+          <div class="conv-item">
+            <div class="conv-item__outcome conv-item__outcome--blocked"></div>
+            <div class="conv-item__main">
+              <div class="conv-item__line1">
+                <span class="conv-item__customer">Customer #2d8e</span>
+                <span class="conv-item__time">Yesterday, 11:01 AM</span>
+              </div>
+              <div class="conv-item__line2">
+                <span class="outcome-badge outcome-badge--blocked">Blocked</span>
+                <span>After-hours emergency · non-member · 7 events</span>
+              </div>
+            </div>
+            <span class="conv-item__arrow">→</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== Section 6: Drill-in ===================== -->
+<section class="section" id="drill">
+  <div class="section__inner">
+    <div class="section__header">
+      <div class="section__number">06 · Conversation drill-in</div>
+      <h2 class="section__title">Forensics, when you need them.</h2>
+      <p class="section__description">A click into any conversation opens the full timeline — customer messages, tool calls, rule firings, and agent responses, all in chronological order. Color-coded by outcome. Expandable for full payload details. Rule names link back to the rules tab.</p>
+    </div>
+
+    <div class="app-frame">
+      <div class="app-titlebar">
+        <div class="app-titlebar__dot" style="background:#fca5a5"></div>
+        <div class="app-titlebar__dot" style="background:#fcd34d"></div>
+        <div class="app-titlebar__dot" style="background:#86efac"></div>
+        <div class="app-titlebar__url">guardrails.demo/activity/conv_b1d8</div>
+      </div>
+
+      <div class="app-body app-body--white">
+        <a class="drill-back">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Activity
+        </a>
+
+        <div class="drill-header">
+          <h1 class="drill-title">Conversation with Customer #b1d8</h1>
+          <div class="drill-subtitle">
+            <span>Started 1:47 PM today</span>
+            <span class="drill-subtitle__sep">·</span>
+            <span>5 events</span>
+            <span class="drill-subtitle__sep">·</span>
+            <span style="color:var(--rose);font-weight:500">Blocked by Business hours</span>
+          </div>
+          <div class="drill-context-btn">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Show agent context
+          </div>
+        </div>
+
+        <div class="timeline">
+
+          <div class="timeline-event timeline-event--user">
+            <div class="timeline-event__node"></div>
+            <div class="timeline-event__time">1:47:02 PM</div>
+            <div class="timeline-event__card">
+              <div class="timeline-event__head">
+                <span class="timeline-event__head-badge">customer</span>
+                <span>Initial message</span>
+              </div>
+              <div class="timeline-event__body">"Hi, I need a plumber on Sunday morning. Just a leak under the sink, nothing urgent."</div>
+            </div>
+          </div>
+
+          <div class="timeline-event timeline-event--info">
+            <div class="timeline-event__node"></div>
+            <div class="timeline-event__time">1:47:03 PM</div>
+            <div class="timeline-event__card">
+              <div class="timeline-event__head">
+                <span class="timeline-event__head-badge">tool</span>
+                <span>lookup_relevant_rules(book_appointment)</span>
+              </div>
+              <div class="timeline-event__body">Returned 6 active rules — agent loaded the rule catalog into its reasoning context.</div>
+            </div>
+          </div>
+
+          <div class="timeline-event timeline-event--blocked">
+            <div class="timeline-event__node"></div>
+            <div class="timeline-event__time">1:47:04 PM</div>
+            <div class="timeline-event__card">
+              <div class="timeline-event__head">
+                <span class="timeline-event__head-badge" style="background:rgba(190,18,60,0.1);color:var(--rose)">blocked</span>
+                <span>book_appointment</span>
+              </div>
+              <div class="timeline-event__body">Attempted Sunday 9 AM plumbing booking. Rule fired: <strong style="color:var(--ink)">Standard operating hours</strong> — business is closed on Sundays.</div>
+              <div class="timeline-event__detail">
+                <strong>args:</strong> { date: "2026-05-31", time: "09:00", service_type: "plumbing" }<br>
+                <strong>reason:</strong> Sunday is in closed_days list
+              </div>
+              <div class="timeline-event__expand">↳ Show full ToolResult payload</div>
+            </div>
+          </div>
+
+          <div class="timeline-event timeline-event--info">
+            <div class="timeline-event__node"></div>
+            <div class="timeline-event__time">1:47:05 PM</div>
+            <div class="timeline-event__card">
+              <div class="timeline-event__head">
+                <span class="timeline-event__head-badge">agent</span>
+                <span>Response</span>
+              </div>
+              <div class="timeline-event__body">"Thanks for reaching out! Unfortunately we're closed on Sundays — we're open Monday through Saturday from 7 AM to 7 PM. Could we look at Monday morning instead?"</div>
+            </div>
+          </div>
+
+          <div class="timeline-event timeline-event--user">
+            <div class="timeline-event__node"></div>
+            <div class="timeline-event__time">1:47:42 PM</div>
+            <div class="timeline-event__card">
+              <div class="timeline-event__head">
+                <span class="timeline-event__head-badge">customer</span>
+                <span>Reply</span>
+              </div>
+              <div class="timeline-event__body">"OK no worries, I'll call back Monday."</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <div class="annotation__icon">06</div>
+      <div class="annotation__body">
+        <strong>The agent's reasoning, on tape.</strong> The drill-in view is forensics-grade — every tool call, every rule check, every state update, every message in chronological order. Owners can verify the agent did what it should have done, or trace exactly what went wrong if it didn't. "Show agent context" reveals the full system prompt the agent had at conversation start, including the injected rule catalog — radical transparency about how the system actually works.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== Footer ===================== -->
+<footer class="doc-footer">
+  <h3 class="doc-footer__title">Designed to be honest about how it works.</h3>
+  <p class="doc-footer__text">Every screen surfaces the agent's reasoning rather than hiding it behind a chat box. Rules are first-class objects with test suites. The activity feed is forensic, not aspirational.</p>
+</footer>
+
+</body>
+</html>

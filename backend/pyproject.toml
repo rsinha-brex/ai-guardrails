@@ -1,0 +1,45 @@
+[project]
+name = "ai-guardrails-backend"
+version = "0.1.0"
+description = "AI Guardrails backend — FastAPI + rule engine + Pydantic AI agent"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "pydantic-ai>=0.0.14",
+    "httpx>=0.27",
+    "python-multipart>=0.0.20",
+    "sse-starlette>=2.1",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+    "anyio>=4.6",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "llm: tests that hit a real LLM through OpenRouter (skipped if OPENROUTER_API_KEY unset)",
+]

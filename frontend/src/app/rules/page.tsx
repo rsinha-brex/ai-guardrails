@@ -5,6 +5,7 @@ import { api, type RuleSummary } from "@/lib/api";
 import { AppShell } from "@/components/AppShell";
 import { RuleCard } from "@/components/RuleCard";
 import { AddRuleModal } from "@/components/AddRuleModal";
+import { EditRuleModal } from "@/components/EditRuleModal";
 import { TestCasesPanel } from "@/components/TestCasesPanel";
 import { useBusinessId } from "@/lib/use-business-id";
 import { useResource } from "@/lib/use-resource";
@@ -13,6 +14,7 @@ import { Plus } from "lucide-react";
 export default function RulesPage() {
   const { businessId, setBusinessId } = useBusinessId();
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<RuleSummary | null>(null);
   const [testing, setTesting] = useState<RuleSummary | null>(null);
 
   const { data: rules, error, refetch: reload } = useResource<RuleSummary[]>(
@@ -76,6 +78,7 @@ export default function RulesPage() {
             businessId={businessId!}
             onChanged={reload}
             onTest={() => setTesting(r)}
+            onEdit={() => setEditing(r)}
           />
         ))}
       </div>
@@ -85,6 +88,18 @@ export default function RulesPage() {
           businessId={businessId}
           onClose={() => setAdding(false)}
           onCreated={onCreated}
+        />
+      )}
+
+      {editing && businessId && (
+        <EditRuleModal
+          rule={editing}
+          businessId={businessId}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            reload();
+          }}
         />
       )}
 

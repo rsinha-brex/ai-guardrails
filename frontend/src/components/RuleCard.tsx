@@ -57,9 +57,11 @@ export function RuleCard({ rule, businessId, onChanged, onTest, onEdit }: Props)
 
   return (
     <div
+      onClick={() => onEdit?.(rule)}
       className={cn(
         "rounded-[var(--radius)] border bg-bg-elevated px-5 py-4 shadow-sm transition-colors",
         rule.is_active ? "border-border" : "border-border opacity-70",
+        onEdit && "cursor-pointer hover:border-border-strong",
       )}
     >
       <div className="flex items-start gap-3">
@@ -92,7 +94,7 @@ export function RuleCard({ rule, businessId, onChanged, onTest, onEdit }: Props)
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {onTest && (
             <button
               type="button"

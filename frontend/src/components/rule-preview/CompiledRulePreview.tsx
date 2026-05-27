@@ -12,6 +12,13 @@ type Props = {
   onSave: (edited: CompiledRule) => void;
   onEdit: () => void;
   saving: boolean;
+  /**
+   * In the create flow the back-button reads "Edit description" and re-opens
+   * the prompt-input step. In the edit-existing-rule flow there's no prompt
+   * to go back to — pass `false` to hide it. Defaults to `true` so the
+   * existing AddRuleModal call site keeps working.
+   */
+  showEditPromptButton?: boolean;
 };
 
 /**
@@ -21,7 +28,7 @@ type Props = {
  * text (name, description, applies-when, block_message, instruction)
  * without re-running the compile step.
  */
-export function CompiledRulePreview({ rule, onSave, onEdit, saving }: Props) {
+export function CompiledRulePreview({ rule, onSave, onEdit, saving, showEditPromptButton = true }: Props) {
   const [draft, setDraft] = useState(() => initialDraft(rule));
 
   useEffect(() => {
@@ -135,14 +142,18 @@ export function CompiledRulePreview({ rule, onSave, onEdit, saving }: Props) {
       </details>
 
       <div className="flex justify-between items-center">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-ink"
-        >
-          <ArrowLeft className="size-3" />
-          Edit description
-        </button>
+        {showEditPromptButton ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-ink"
+          >
+            <ArrowLeft className="size-3" />
+            Edit description
+          </button>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           onClick={handleSave}

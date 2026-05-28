@@ -13,7 +13,9 @@ tool call — with a complete audit trail.
 
 > **Status:** functional take-home submission. Backend + frontend run locally,
 > 76-case eval suite (engine + compile + agent layers) passes green, observable
-> activity rail surfaces every rule decision in real time.
+> activity rail surfaces every rule decision in real time. See
+> [§ Known limitations](#known-limitations) for behaviors that surfaced
+> during the per-business E2E test pass that aren't fully resolved.
 
 ---
 
@@ -835,3 +837,47 @@ ai-guardrails/
 For more detail on architectural rationale and tradeoffs, see
 `WRITEUP.md`. For per-case eval detail, see the most recent
 `backend/tests/eval/results/latest.md`.
+
+---
+
+## Known limitations
+
+These came out of a per-business E2E test pass against the deployed
+app on 2026-05-28 — listing them honestly so a reviewer doesn't have
+to discover them by accident:
+
+- **Sunday/closed-day relabeling (BUG-4).** When a customer asks for a
+  closed-day booking ("Sunday morning"), the agent sometimes books the
+  next-available weekday and *labels that date with the original
+  day-name in its reply* — e.g. "I've booked you for Sunday, June 1"
+  when June 1 is a Monday. The system prompt was tightened to forbid
+  this (see `app/agent/prompt.py`) but the LLM occasionally still does
+  it. The actual booking is for the right date; the customer-facing
+  text is the part that's wrong. A future fix would be a
+  post-generation check that flags day/date-name mismatches before
+  streaming the reply.
+
+- **Storm-damage routing rule on Mountain View Roofing (BUG-2).** The
+  `Storm damage routes to emergency` conditional_block uses an
+  `llm_judge` that should classify "hailstorm damaged my shingles" as
+  storm damage. In production it consistently returns false (rule
+  passes, doesn't fire), so storm-damage requests get routed through
+  the normal lead-time path instead of the emergency channel. Likely a
+  pydantic-ai async/sync boundary issue inside the engine's judge
+  hook — needs deeper debugging. Other rule paths (regex, contains,
+  typed evaluators) all fire correctly in production.
+
+- **G9 eval cases require a working OpenRouter connection.** The 6
+  Group-9 compile-and-probe cases in the eval suite fail with
+  `ModelAPIError: Connection error` if the OpenRouter API isn't
+  reachable (e.g. some VPNs intercept TLS to the OpenRouter host). The
+  remaining 70 deterministic + AGT cases pass without any external
+  dependency.
+
+The five other bugs surfaced in the same E2E pass (dropdown
+overlay, Atlantic seasonal closure, PrairieFence frozen-ground,
+GardenWorks "irrigation" alias, ImproveIt cash-deal regex correctness)
+were fixed and verified live — the bug log lives in `BUGS_FOUND.md`
+locally (gitignored) for the test pass; commit history at
+<https://github.com/rsinha-brex/ai-guardrails/commits/main> shows
+each fix.

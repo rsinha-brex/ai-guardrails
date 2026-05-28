@@ -966,21 +966,22 @@ def all_payloads() -> list[dict[str, Any]]:
 
 
 def run_if_empty() -> None:
-    """If no businesses exist yet, insert the three case studies."""
+    """If no businesses exist yet, insert the three case studies.
+
+    The demo-conversations seed is gated separately on the conversations
+    table being empty, so we always call it — fresh deploys get demo
+    activity, and deploys that already have conversations are no-ops.
+    """
     with session_scope() as db:
         any_business = db.execute(select(Business.id).limit(1)).scalar_one_or_none()
-        if any_business is not None:
-            log.info("seed: businesses already present, skipping")
-            return
-        for payload in all_payloads():
-            biz = _ensure_business(db, payload)
-            for rule in payload["rules"]:
-                _ensure_rule(db, biz.id, rule)
-        log.info("seed: inserted 3 businesses with rule sets")
-    # Conversation seed is gated separately on the conversations table —
-    # so a fresh deploy gets demo activity without re-creating it on every
-    # subsequent boot, and a deploy that already has real conversations
-    # never has demo rows quietly inserted alongside them.
+        if any_business is None:
+            for payload in all_payloads():
+                biz = _ensure_business(db, payload)
+                for rule in payload["rules"]:
+                    _ensure_rule(db, biz.id, rule)
+            log.info("seed: inserted 3 businesses with rule sets")
+        else:
+            log.info("seed: businesses already present, skipping rule seed")
     seed_demo_conversations_if_empty()
 
 

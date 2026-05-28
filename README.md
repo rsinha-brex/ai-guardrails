@@ -487,6 +487,95 @@ turn and once after. New audit rows show up within 3s of being written.
 
 ## 5. How rules are implemented and run in the agent
 
+### Multi-tenancy: each business has its own rule set
+
+Every `Rule` row carries a `business_id` foreign key. **The agent only ever
+sees the rules of the business it's currently serving** — never a merged
+view, never another tenant's rules.
+
+The selection happens in two places:
+
+1. **System prompt construction** (`backend/app/agent/agent.py:system_prompt_for`):
+   ```python
+   rules = db.execute(
+       select(Rule)
+         .where(Rule.business_id == deps.business_id, Rule.is_active.is_(True))
+         .order_by(Rule.priority.desc())
+   ).scalars().all()
+   return build_system_prompt(business, rules, current_time=deps.current_time)
+   ```
+   The catalog rendered into the prompt is filtered to *this conversation's*
+   business + active rules only. Switching businesses mid-app produces a
+   completely different prompt for the next conversation.
+
+2. **Engine evaluation** (`backend/app/agent/tools.py:_load_engine_for`):
+   ```python
+   rules = db.execute(
+       select(Rule).where(Rule.business_id == deps.business_id, Rule.is_active.is_(True))
+   ).scalars().all()
+   return RuleEngine.for_business(rules, judge=judge), biz
+   ```
+   When a tool fires (`book_appointment`, `check_availability`, …), the
+   engine loads only this business's rules. There is no cross-tenant
+   evaluation path.
+
+So when a customer chats with **Sunrise Home Services**, the agent's
+system prompt mentions Sunrise's nine rules (Standard hours, Central
+Florida ZIPs, HVAC/plumbing/electrical/IAQ services, Comfort Club
+membership gating, …). It does *not* mention Atlantic Pool's seasonal
+closure or PrairieFence's frozen-ground rule — those are invisible.
+
+### End-to-end lifecycle: customer message → audited outcome
+
+Concrete trace of what happens when a customer sends a message to the
+deployed app:
+
+1. **Frontend POST** to `/api/proxy/api/conversations/{id}/messages` with
+   the customer's text. The Next.js proxy injects HTTP-Basic auth
+   server-side and forwards to FastAPI.
+2. **FastAPI handler** (`backend/app/routes/conversations.py`) loads the
+   `Conversation` row, builds an `AgentDeps` carrying `db`, `business_id`,
+   `conversation_id`, `current_time`, the cached `LLMJudge`, and the
+   conversation's mutable `state` dict.
+3. **System prompt is rebuilt** for this turn:
+   - `system_prompt_for(deps)` queries this business's active rules
+   - `build_system_prompt(business, rules, current_time=...)` formats them
+     into a `# Rules currently in effect` section + a 15-day calendar +
+     `# Communication guidelines` (output_constraints) — see
+     `backend/app/agent/prompt.py`
+4. **Pydantic AI runs the agent** via `agent.run_stream(message, deps=deps)`.
+   The agent picks tools based on the customer's intent + the rule
+   catalog it just read. Tokens stream back to the frontend over SSE.
+5. **A tool fires** (e.g. `book_appointment(date, time, service_type, zip)`).
+   The tool body calls `_check_and_audit(deps, tool_name, args)`:
+   - Loads `RuleEngine` from this business's rules (`_load_engine_for`)
+   - `RuleEngine.check(tool_name, args, business, state, current_time)`
+     evaluates every rule that `applies_to_tools` includes the tool
+     name. Rules without that tool in their list are skipped.
+   - Produces a `CheckResult`: `accepted` / `blocked` / `needs_info` +
+     a list of every fired rule + the surfacing rule's `block_message`
+6. **Audit rows are written** in chronological order:
+   - On accept: one `rule_considered` row per applicable rule (with
+     `outcome=passed` or `not_applicable` for scope-skipped rules), then
+     a single headline `tool_call` row with `outcome=accepted`
+   - On block: one `tool_call` row per fired rule with `outcome=blocked`
+     and the rule's identity + block_message
+   - All of this is written via the same SQLAlchemy `Session` the rest of
+     the request uses, so it's transactional with the conversation state
+7. **Tool result returns to the agent**. The agent reads the
+   `user_facing_message` (or accepts internally) and composes the
+   reply text the customer sees.
+8. **Streaming completes**, the assistant message + state mutations +
+   blocked-rule-id set commit to the DB.
+9. **Live activity rail** on the frontend polls
+   `/api/proxy/api/activity?conversation_id=<id>` every 3 seconds and
+   surfaces every audit row written by step 6 within ~3s.
+
+The key invariant: **every rule decision the agent makes goes through the
+engine, and every engine call writes audit rows.** There is no path where
+a rule fires silently or where the agent tells the customer something the
+audit log doesn't reflect.
+
 ### The rule engine (`backend/app/engine/`)
 
 Pure Python, no DB, no I/O. Three building blocks:
@@ -527,7 +616,7 @@ all routed through one helper:
 
 ```python
 def _check_and_audit(deps, tool_name, args, *, proposed_action=None):
-    engine, biz = _load_engine_for(deps)        # loads from DB or test hook
+    engine, biz = _load_engine_for(deps)        # this business's rules only
     state_obj = ConversationState.model_validate(deps.state)
     result = engine.check(tool_name, args, biz, state_obj, deps.current_time)
 
@@ -557,30 +646,56 @@ Two key invariants:
 
 ### How rules are surfaced in the system prompt
 
-The agent's system prompt (built in `agent/prompt.py:build_system_prompt`)
-includes a **live catalog** of every active rule:
+`build_system_prompt(business, rules, current_time)` produces a prompt
+that looks like this — built fresh per turn, scoped to this business:
 
 ```
+You are the customer-service agent for the business named below…
+[…base behavior rules: capture state, prefer to act, never narrate…]
+
+# Business
+Sunrise Home Services
+Timezone: America/New_York
+Description: Florida multi-trade — HVAC, plumbing, electrical, indoor air quality.
+
+# Current time (server)
+2026-05-28T08:30:00
+
+# Calendar reference (next 15 days, USE THIS — don't guess weekdays)
+  2026-05-28 = Thursday ← today
+  2026-05-29 = Friday ← tomorrow
+  2026-05-30 = Saturday
+  2026-05-31 = Sunday
+  …
+
 # Rules currently in effect
-- [Standard hours] (business_hours): Standard operating hours.
-  Applies when: (general)
-  Block message: We're closed then.
-- [Service area] (service_area_zip): ZIP allow-list defining the geographic service area.
-  Applies when: (general)
-  Block message: That ZIP is outside our service area.
+- [Standard operating hours] (business_hours): Open Mon-Fri 7 AM–7 PM, Sat 8 AM–4 PM, closed Sundays.
+  Applies when: Customer wants to book or check availability.
+  Block message: We're closed Sundays — we'll be back at 7 AM Monday.
+- [Central Florida service ZIPs] (service_area_zip): Tampa, Orlando, …
+  Applies when: Customer requests work outside our service area.
+  Block message: We don't service that ZIP — happy to refer a partner.
+- [Late-day plumbing requires emergency] (conditional_block): …
+  Block message: We can't dispatch plumbing this late unless it's an emergency. …
 …
 
 # Communication guidelines
-- (firm) Mention our Comfort Club savings on every booking confirmation.
+- (guidance) When the customer asks about ongoing service, recurring maintenance,
+  service plans, discounts, pricing, or weekend/after-hours availability, mention
+  the **Comfort Club** membership by name in your reply. …
 ```
 
-The agent reads this and either (a) calls the relevant tool and lets the
-engine block, or (b) explains the rule directly to the customer. Either is
-acceptable; both produce the same outcome.
+A different business (e.g. Atlantic Pool & Spa) gets a completely
+different `# Rules currently in effect` block — same prompt template,
+different content. The agent never sees both at once.
 
-`output_constraint` rules don't go through the engine — they're
-system-prompt-injected ("communication guidelines"). The engine's role is
-gating; output_constraint shapes tone and content.
+The agent reads this catalog and either (a) calls the relevant tool and
+lets the engine block, or (b) explains the rule directly to the
+customer. Either is acceptable; both produce the same outcome.
+
+`output_constraint` rules don't go through the engine — they're injected
+as `# Communication guidelines` and shape tone/content. The engine's
+role is gating; output_constraint shapes prose.
 
 ---
 

@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <ChevronDown className="size-3.5 text-ink-muted" />
             </button>
             {open && (
-              <ul className="absolute right-0 mt-1 w-72 rounded-md border border-border bg-bg-elevated shadow-lg z-50 overflow-hidden">
+              <ul className="absolute right-0 mt-1 w-72 max-h-[70vh] overflow-y-auto overscroll-contain rounded-md border border-border bg-bg-elevated shadow-lg z-50">
                 {businesses.map((b) => (
                   <li
                     key={b.id}

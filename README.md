@@ -843,29 +843,8 @@ For more detail on architectural rationale and tradeoffs, see
 ## Known limitations
 
 These came out of a per-business E2E test pass against the deployed
-app on 2026-05-28 — listing them honestly so a reviewer doesn't have
-to discover them by accident:
-
-- **Sunday/closed-day relabeling (BUG-4).** When a customer asks for a
-  closed-day booking ("Sunday morning"), the agent sometimes books the
-  next-available weekday and *labels that date with the original
-  day-name in its reply* — e.g. "I've booked you for Sunday, June 1"
-  when June 1 is a Monday. The system prompt was tightened to forbid
-  this (see `app/agent/prompt.py`) but the LLM occasionally still does
-  it. The actual booking is for the right date; the customer-facing
-  text is the part that's wrong. A future fix would be a
-  post-generation check that flags day/date-name mismatches before
-  streaming the reply.
-
-- **Storm-damage routing rule on Mountain View Roofing (BUG-2).** The
-  `Storm damage routes to emergency` conditional_block uses an
-  `llm_judge` that should classify "hailstorm damaged my shingles" as
-  storm damage. In production it consistently returns false (rule
-  passes, doesn't fire), so storm-damage requests get routed through
-  the normal lead-time path instead of the emergency channel. Likely a
-  pydantic-ai async/sync boundary issue inside the engine's judge
-  hook — needs deeper debugging. Other rule paths (regex, contains,
-  typed evaluators) all fire correctly in production.
+app on 2026-05-28. Most were fixed in the same session and verified
+live; one remains as a documented limitation.
 
 - **G9 eval cases require a working OpenRouter connection.** The 6
   Group-9 compile-and-probe cases in the eval suite fail with
@@ -874,10 +853,30 @@ to discover them by accident:
   remaining 70 deterministic + AGT cases pass without any external
   dependency.
 
-The five other bugs surfaced in the same E2E pass (dropdown
-overlay, Atlantic seasonal closure, PrairieFence frozen-ground,
-GardenWorks "irrigation" alias, ImproveIt cash-deal regex correctness)
-were fixed and verified live — the bug log lives in `BUGS_FOUND.md`
-locally (gitignored) for the test pass; commit history at
+The seven other bugs surfaced in the same E2E pass were all fixed
+and verified live:
+
+- **BUG-1** Atlantic Pool seasonal closure (Nov–Mar) — rule used
+  `args.month`, agent emits only `args.date`. Fix: regex on
+  `args.date`. ✓
+- **BUG-2** Mountain View storm-damage `llm_judge` returning false —
+  root cause was `Agent.run_sync()` failing inside the FastAPI event
+  loop and the bare except swallowing the RuntimeError. Fix: judge
+  runs on its own daemon thread with a 20s timeout and explicit error
+  logging. ✓
+- **BUG-3** Business switcher dropdown overlaying activity rail. Fix:
+  `useRef` + outside-click/Escape close handler. ✓
+- **BUG-4** Agent labeling Monday "Sunday" in replies — root cause
+  was bad LLM date arithmetic (the agent thought `2026-06-01` was
+  Sunday). Fix: embed a 15-day calendar in the system prompt with
+  `YYYY-MM-DD = Weekday` pairs the agent can look up directly. ✓
+- **BUG-5** PrairieFence frozen-ground — same `args.month` issue as
+  BUG-1; same regex fix. ✓
+- **BUG-6** GardenWorks blocking "irrigation" service_type. Fix:
+  added "irrigation" alias to the allowed_services list. ✓
+- **BUG-7** (generalization of BUG-4) — same root cause + fix.
+
+Commit history at
 <https://github.com/rsinha-brex/ai-guardrails/commits/main> shows
-each fix.
+each fix; the live test pass that verified all of them lives in
+`BUGS_FOUND.md` (gitignored, kept locally).

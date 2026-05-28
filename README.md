@@ -99,86 +99,222 @@ Authentication is HTTP Basic with `BASIC_AUTH_USER:BASIC_AUTH_PASS` from
 
 ## 2. Tour: how to use the app
 
-The app has three surfaces: **Rules**, **Chat**, and **Activity**.
+The app has three surfaces — **Rules**, **Chat**, **Activity** — plus
+two modal flows (compile + edit) and a side-panel for tests. Each section
+below walks through the actual user flow end-to-end.
 
 ### Rules page (`/rules`)
 
 ![Rules page](screenshots/section_rules.png)
 
-- **Business switcher** (top-right) — switch between seeded businesses.
-- **Rule cards** — one per active or disabled rule. Each card shows a
-  rule-type pill, name, description, the tools it applies to, and a
-  test-status row.
-- **Click any card** to open the inline edit modal — adjust hours, ZIPs,
-  block message text, etc., without re-running the compile step.
-- **Add rule** button (top-right) — opens the compile modal.
-- **⋮ menu** on each card — Enable / Disable / Delete.
+This is the home of guardrails for the currently-selected business. The
+top-right business switcher lets you flip between the 12 seeded tenants
+without losing context — the URL updates to `?business=<uuid>` so the
+state survives refresh and link-sharing.
 
-### Adding a rule via the compile modal
+Each rule card shows:
+- **Rule-type pill** — `BUSINESS HOURS`, `SERVICE AREA`, `SERVICES`,
+  `LEAD TIME`, `CONDITIONAL`, `OUTPUT CONSTRAINT`. Color changes by
+  status (`LIVE` / `DISABLED`).
+- **Name + description + applies-when** — owner-editable, used by the
+  agent's system prompt verbatim.
+- **Tool list** — which tool calls this rule evaluates against
+  (`book_appointment`, `lookup_service_area`, etc.).
+- **Test-status row** — `2 pass · book_appointment`, `No test cases yet`,
+  or red counts if any test is failing.
+
+Three actions on each card:
+- **Test** (right side) — opens the test-cases side panel for this rule.
+- **Edit** — opens the inline edit modal (full parameter editor).
+- **⋮ menu** — Enable / Disable (toggles `is_active`) / Delete.
+
+Top-right of the page: **+ Add rule** opens the compile modal.
+
+### Adding a rule (compile modal)
 
 ![Compile preview](screenshots/section_create.png)
 
-- Type a description in plain English (or click a template on the right).
-- Hit **Generate rule** — the platform calls the compile agent. The
-  pre-check rejects architecturally-impossible patterns (random sampling,
-  frequency throttling, side effects) and policy-prohibited patterns (PII,
-  protected class) deterministically before any LLM call.
-- The compile result renders as an editable preview: rule type, name,
-  description, applies-when, and per-rule-type structured parameters.
-- Save — the rule lands at the top of the list, cited in the chat agent's
-  system prompt within the next conversation turn.
+The compile flow takes plain English in, produces a structured rule out.
+Three things happen on **Generate rule**:
 
-### Edit modal
+1. **`_pre_check`** runs deterministically before any LLM call. It
+   rejects architecturally-impossible patterns (random sampling,
+   frequency throttling, cross-conversation lookups, side effects) and
+   policy-prohibited patterns (PII, protected class, trivially-true
+   rules, vague modifiers, prompt-injection phrasing). Failure shows an
+   amber clarifying-questions box with the exact rationale.
+2. **The compile agent** (`anthropic/claude-sonnet-4.5`) returns a
+   typed `CompiledRule` payload — `rule_type`, structured `parameters`,
+   `name`, `description`, `applies_when_description`, plus the original
+   `source_prompt` for audit.
+3. **`_lint_compiled`** runs a post-LLM check on the result —
+   re-evaluates the shared adversarial patterns against `source_prompt`
+   plus structural checks (empty service-allow-list, 24/7-with-no-
+   closed-days when the prompt mentions "closed", empty output_constraint
+   instructions).
+
+The preview shows the compiled rule editable inline — name, description,
+applies-when, block message, instruction. Save persists with a POST.
+The rule appears at the top of the list and is cited in the agent's
+system prompt within the next conversation turn.
+
+Templates on the right seed the prompt with sample text for each of the
+seven rule types — useful for owners who don't know what to write.
+
+### Edit modal (click any rule card)
 
 ![Edit modal](screenshots/section_edit_modal.png)
 
-- Per-rule-type parameter editors:
-  - `business_hours` — per-weekday `<input type="time">` + closed-day toggles
-  - `service_area_zip` — comma-separated allowed/denied ZIPs
-  - `services_offered` — comma-separated allowed services
-  - `customer_eligibility` — three toggles (homeowner/renter/membership)
-  - `lead_time_minimum` — number input + bypass-state field selector
-  - `output_constraint` — textarea + severity radio
-  - `conditional_block` — JSON textarea (engine fallback for advanced patterns)
+Same modal as compile-preview but pre-populated with the rule's current
+state. **No LLM call** — pure structured edit. Save PATCHes the rule.
+
+Per-rule-type parameter editors:
+- `business_hours` — per-weekday `<input type="time">` start/end +
+  closed-day toggles. Owner sees real time pickers, not raw JSON.
+- `service_area_zip` — two comma-separated lists (allowed / denied) +
+  block message.
+- `services_offered` — comma-separated allowed services + block message.
+- `customer_eligibility` — three toggles
+  (`homeowner_required` / `exclude_renters` / `membership_required`) +
+  required state fields.
+- `lead_time_minimum` — minimum hours number input + which service types
+  it applies to + bypass-state-field selector (`is_emergency` is the
+  documented one).
+- `output_constraint` — instruction textarea + severity radio
+  (`guidance` / `firm` / `must`).
+- `conditional_block` — JSON textarea fallback for the cases the typed
+  editors don't cover (advanced expression trees).
 
 ### Chat page (`/chat`)
 
 ![Chat panel](screenshots/section_chat.png)
 
-- **Send a message** — Enter sends, Shift+Enter newlines.
-- **Live activity rail** (right) — every tool call streams in real time
-  with its outcome pill (accepted / blocked / needs_info), the firing rule
-  name, and the args. `rule_considered` rows precede the headline
-  `tool_call` row chronologically — the rail tells the story top-to-bottom.
-- **Reset** button clears the conversation and audit log.
+Two panels: the conversation on the left, the **live activity rail** on
+the right. Both update in real time as the agent runs.
 
-### Activity page (`/activity`)
+**Sending a message:**
+- Enter sends; Shift-Enter inserts a newline.
+- The textarea auto-resizes up to 5 lines, then scrolls internally.
+- Send is disabled while a turn is streaming.
+
+**What you'll see during a turn:**
+- The user bubble appears immediately on submit.
+- An assistant bubble appends with empty content; tokens stream into it
+  via SSE.
+- The activity rail shows a "LIVE" pulse pill — every tool call the
+  agent fires (state updates, lookups, the booking attempt itself)
+  appends as a card with the tool name, args, fired rule, and outcome
+  pill (`accepted` green, `blocked` rose, `needs_info` amber).
+- After the turn completes, the rail re-fetches once to make sure no
+  audit row was missed; the live pill clears.
+
+**The screenshot above** shows what happens when a customer asks for a
+pool install at Atlantic Pool & Spa: the agent first calls
+`update_conversation_state` twice (capturing `address_zip=33156` and
+`is_homeowner=true`), then attempts `book_appointment` — which the
+engine blocks via the **Pool install lead time** rule (33.6h elapsed
+< 336h required). Three audit events surface in the rail; the agent's
+reply paraphrases the block message and offers a counterproposal
+("June 11 or later").
+
+**Reset button** (top-right of the conversation panel): DELETE the
+conversation, clear messages and audit log, create a fresh conversation.
+
+**Refresh-survives-state:** the conversation ID is in
+`localStorage[guardrails:conv:<businessId>]`, so reloading the page
+hydrates the same convo.
+
+### Activity list (`/activity`)
 
 ![Activity list](screenshots/section_activity.png)
 
-- All conversations for the current business, with outcome pills.
-- Click into one to see the full timeline.
+All conversations for the current business, sorted newest-first. Each
+row shows:
+- Customer identifier (the seeded display name or `Customer #6c25`)
+- Outcome pill (`BLOCKED` red / `ALLOWED` green / `OPEN` neutral) —
+  reflects the **latest** audit row in the conversation.
+- Timestamp + message count
+- A `TEST` chip on conversations created by the test runner (so demo
+  conversations are visually distinguishable from real ones).
+
+**Filter chips** (top): three outcome filters that toggle on/off. Click
+**Outcome: Blocked** and only blocked conversations remain in the list;
+click again or **Clear** to reset. The list polls every 3 seconds while
+the tab is visible (paused via `document.hidden`) so new audit rows
+surface within 3s of being written.
+
+**Click any row** to drill in.
 
 ### Activity drill-in (`/activity/[conversationId]`)
 
 ![Activity drill](screenshots/section_drill.png)
 
-- Interleaved messages and tool events, color-coded by outcome.
-- Each tool event shows: tool name, fired rule (with priority), reason,
-  the actual args, and the message the customer would have seen.
-- **Show agent context** opens the system prompt as it was at the start
-  of the conversation — you can see the live rule catalog the agent was
-  briefed with.
+The full timeline of one conversation. Messages and audit events are
+**interleaved chronologically** so an owner reads top-to-bottom and
+sees the story exactly as it played out.
 
-### Test panel
+Each event card shows:
+- **Event-type pill** (`USER`, `ASSISTANT`, `STATE_UPDATE`, `TOOL_CALL`,
+  `RULE_CONSIDERED`, `LOOKUP`, `ERROR`)
+- **Outcome pill** for tool events (color-coded)
+- Timestamp
+- Tool name + the fired rule (in italics)
+- The customer-facing message that would have surfaced (`"Pool installs
+  need 2 weeks of lead time minimum (permits + crew)."`)
+- An expandable `▸ args` block with the raw tool-call payload (JSON,
+  scrollable for long ones)
+
+**`Show agent context`** (top-right) opens a modal with the **system
+prompt as it was at the start of this conversation**. Owners can see
+the exact rule catalog the agent was briefed with — useful for debugging
+"why didn't the agent know about my new rule?" (answer: it hadn't been
+added when this conversation started).
+
+**`← Activity`** breadcrumb returns to the list with prior filter state
+preserved.
+
+### Test panel (per-rule side panel)
 
 ![Test panel](screenshots/section_tests.png)
 
-- Click **Test** on any rule card. Add a test case (customer message +
-  expected outcome). Run individually or **Run all** in one batch — each
-  case spins an isolated agent run and records pass/fail.
-- **Refine rule with AI** on a failing case opens a diff modal that
-  proposes a parameter tweak. Apply it to update the rule in place.
+Click **Test** on any rule card; a side panel slides in from the right.
+
+**Adding a test case:**
+- Click **+ Add a test case** — an inline form opens with a customer-
+  message textarea and an outcome dropdown (`accepted` / `blocked` /
+  `needs_info`).
+- Submit — the case persists to the DB and shows up in the list with a
+  `— Not run` status.
+
+**Running cases:**
+- **Run** on a single row spins an isolated conversation, runs the full
+  agent against the customer message, and asserts on the outcome.
+  Status updates to `✓ PASS` (green) or `× FAIL` (red).
+- **Run all** runs every case sequentially. The header shows
+  `X pass · Y fail` once they all complete.
+- The test runner reuses the production agent path — same rules, same
+  tools, same audit log writes. Conversations created by the test
+  runner are tagged so they're distinguishable in the activity list.
+
+**Refining a failing case:**
+- A `Refine rule with AI` button appears next to any failing case.
+- Click it — the **refine agent** (`agent/refine_agent.py`) examines
+  the rule, the failing case's customer message, and the actual outcome,
+  then proposes a single-field parameter tweak.
+- A diff modal renders with the proposed change highlighted. Owner can
+  **Apply changes** (PATCH the rule, refetch the rule list, modal
+  closes) or **Cancel**.
+
+**Deleting a case:** trash icon → browser `confirm()` → DELETE.
+
+### What ties it all together
+
+The activity rail in chat, the activity-list filter chips, the activity
+drill-in, and the test runner all read from the **same `AuditLog`
+table**. Every rule decision goes through `_check_and_audit`; every UI
+surface that talks about rule decisions queries audit rows. There is no
+second source of truth — the rail you see during a chat is the same
+data the drill-in shows after the fact.
 
 ---
 

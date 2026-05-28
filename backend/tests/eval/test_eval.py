@@ -10,20 +10,17 @@ import os
 
 import pytest
 
-from tests.eval.framework import EvalCase, evaluate_assertions, run_case
-from tests.eval.taxonomy import DETERMINISTIC_GROUPS
-
 from tests.eval._results import record as _record
+from tests.eval.framework import EvalCase, evaluate_assertions, run_case
 
 
 def _execute(case: EvalCase) -> None:
-    deterministic = case.group in DETERMINISTIC_GROUPS
     # Disposition + some exotic cases are short-circuit-rejected by
     # compile_agent._pre_check before any LLM call, so they run deterministically
     # even when OPENROUTER_API_KEY is unset. For the genuinely live cases, we
     # skip cleanly when there's no key so a quick `pytest tests/eval` still
     # produces clean output without network access.
-    if case.runner_kind == "engine":
+    if case.runner_kind in ("engine", "agent_unit"):
         ev = run_case(case)
         ok, results = evaluate_assertions(case, ev)
         _record(case, ev, ok, results)
@@ -42,11 +39,24 @@ def _execute(case: EvalCase) -> None:
     for i in range(n):
         try:
             ev = run_case(case, sample_index=i)
-        except Exception as exc:  # network failure / LLM hiccup
+        except Exception:  # network failure / LLM hiccup
             if not os.environ.get("OPENROUTER_API_KEY"):
                 pytest.skip(f"{case.id}: no OPENROUTER_API_KEY and live LLM unreachable")
             raise
         ok, results = evaluate_assertions(case, ev)
+        # Errors (network failure, validation error) must count as sample
+        # failures even if the case's assertions trivially pass on empty
+        # evidence — otherwise negative-path assertions like
+        # AgentDidNotCallTool become false-positive when the LLM call errors.
+        if ev.error:
+            ok = False
+            results = list(results) + [
+                type(
+                    "_RuntimeError",
+                    (),
+                    {"ok": False, "reason": f"runtime error: {ev.error}"},
+                )()
+            ]
         _record(case, ev, ok, results, sample_idx=i)
         if ok:
             pass_count += 1
@@ -88,23 +98,8 @@ def test_family_d(case: EvalCase) -> None:
     _execute(case)
 
 
-@pytest.mark.probabilistic
-def test_family_e(case: EvalCase) -> None:
-    _execute(case)
-
-
 @pytest.mark.deterministic
 def test_family_f(case: EvalCase) -> None:
-    _execute(case)
-
-
-@pytest.mark.probabilistic
-def test_family_g(case: EvalCase) -> None:
-    _execute(case)
-
-
-@pytest.mark.probabilistic
-def test_family_h(case: EvalCase) -> None:
     _execute(case)
 
 
@@ -117,4 +112,14 @@ def test_family_dis(case: EvalCase) -> None:
 
 
 def test_family_adv(case: EvalCase) -> None:
+    _execute(case)
+
+
+@pytest.mark.deterministic
+def test_family_agt(case: EvalCase) -> None:
+    _execute(case)
+
+
+@pytest.mark.probabilistic
+def test_family_e2e(case: EvalCase) -> None:
     _execute(case)

@@ -33,9 +33,8 @@ from pydantic_ai import Agent
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 
 from app.agent.compile_prompt import SYSTEM_PROMPT
-from app.agent.openrouter import compile_model
+from app.agent.openrouter import compile_model, compile_model_for
 from app.schemas.rules import CompiledRule, CompileFailure, parse_rule
-
 
 # --------------------------------------------------------------------------- #
 # Shared adversarial-pattern constants
@@ -57,10 +56,17 @@ _TRIVIAL_PHRASES: tuple[str, ...] = (
 )
 
 _PII_PATTERNS: tuple[str, ...] = (
-    # "from John Smith at 123 Main St." (lowercased before matching)
+    # "from John Smith at 123 Main St." — number sequence anchors this against
+    # false positives from common phrases.
     r"\bfrom\s+[a-z]+\s+[a-z]+\s+at\s+\d+",
-    # "don't book John Smith"
-    r"\bdon'?t\s+(?:take|book|service)\s+[a-z]+\s+[a-z]+\b",
+)
+
+# "don't book John Smith" — checked against the *original* (case-preserved)
+# prompt because the only reliable signal that "John Smith" is a person and
+# not a service noun is the Title-Case shape. Lowercasing first false-positives
+# on legitimate phrasings like "Don't book plumbing after 4 PM."
+_PII_NAME_TARGETING_REGEX = (
+    r"\b[Dd]on'?t\s+(?:take|book|service)\s+[A-Z][a-z]+\s+[A-Z][a-z]+\b"
 )
 
 _PROTECTED_CLASS_PATTERNS: tuple[str, ...] = (
@@ -138,37 +144,46 @@ def _match_regexes(text: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(p, text) for p in patterns)
 
 
-def _check_prompt_for_adversarial_patterns(text: str) -> CompileFailure | None:
+def _check_prompt_for_adversarial_patterns(
+    text_lower: str, text_original: str | None = None
+) -> CompileFailure | None:
     """Shared phrase / regex matchers — used by both pre_check and lint.
 
-    `text` must already be lower-cased. Returns the first matching refusal
-    or None if no pattern fires.
+    `text_lower` must already be lower-cased and is used for case-insensitive
+    phrase / regex matching. `text_original` (when provided) is the un-lowercased
+    prompt; the name-targeting regex requires Title-Case to disambiguate
+    "Don't book John Smith" from legitimate phrasings like "Don't book plumbing
+    after 4 PM." When `text_original` is None, the name-targeting check is
+    skipped (callers without access to the original prompt fall back to the
+    lowercased PII patterns alone).
     """
-    if _match_phrases(text, _TRIVIAL_PHRASES):
+    if _match_phrases(text_lower, _TRIVIAL_PHRASES):
         return _refuse(
             "Trivially-true / trivially-false rule has no enforcement value.",
             "An 'always X' or 'never X' rule has no useful effect — what should actually trigger this?",
             "Are there specific conditions (service type, time, customer state) that should narrow it down?",
         )
-    if _match_regexes(text, _PII_PATTERNS):
+    if _match_regexes(text_lower, _PII_PATTERNS) or (
+        text_original is not None and re.search(_PII_NAME_TARGETING_REGEX, text_original)
+    ):
         return _refuse(
             "Source prompt targets a specific person / address (PII) — refused on policy.",
             "Rules can't target a named individual or a specific address — they apply to anyone who matches a condition.",
             "What policy goal are you trying to achieve? We can probably express it as a service-area or eligibility rule instead.",
         )
-    if _match_regexes(text, _PROTECTED_CLASS_PATTERNS):
+    if _match_regexes(text_lower, _PROTECTED_CLASS_PATTERNS):
         return _refuse(
             "Source prompt looked like protected-class targeting — refused on policy.",
             "I can't write rules keyed on protected characteristics (gender, race, religion, etc.).",
             "What's the underlying business reason? There's likely a non-protected attribute that captures the same intent.",
         )
-    if _match_phrases(text, _INJECTION_PHRASES):
+    if _match_phrases(text_lower, _INJECTION_PHRASES):
         return _refuse(
             "Prompt-injection / role-override attempt — refused.",
             "That looked like an attempt to override the compiler's instructions; rules describe enforcement conditions, not agent behavior.",
             "What enforcement outcome were you actually trying to achieve?",
         )
-    if _match_phrases(text, _VAGUE_PHRASES):
+    if _match_phrases(text_lower, _VAGUE_PHRASES):
         return _refuse(
             "Vague modifier without concrete intent — refuse on ambiguity.",
             "I need a concrete condition — 'try to be helpful' isn't something the engine can enforce.",
@@ -192,7 +207,7 @@ def _lint_compiled(rule: CompiledRule) -> CompileFailure | None:
     params = rule.parameters or {}
 
     # 1. Adversarial-pattern catch (shared with _pre_check).
-    failure = _check_prompt_for_adversarial_patterns(src)
+    failure = _check_prompt_for_adversarial_patterns(src, rule.source_prompt or "")
     if failure is not None:
         return failure
 
@@ -315,21 +330,26 @@ def _pre_check(prompt: str) -> CompileFailure | None:
         )
 
     # 4. Policy / nonsense patterns — shared with _lint_compiled.
-    return _check_prompt_for_adversarial_patterns(p)
+    return _check_prompt_for_adversarial_patterns(p, prompt or "")
 
 
-async def compile_rule(prompt: str) -> CompiledRule | CompileFailure:
+async def compile_rule(prompt: str, *, model: str | None = None) -> CompiledRule | CompileFailure:
     """Run the compile agent against a prompt and post-validate the result.
 
     A deterministic pre-check rejects architecturally-impossible prompts
     (random sampling, frequency throttling, cross-conversation lookups, side
     effects) before any LLM call.
+
+    `model` is an optional OpenRouter model slug (e.g. "anthropic/claude-haiku-4.5")
+    used by the eval lib to compare compile fidelity across models without
+    touching env vars. None falls back to the configured COMPILE_MODEL.
     """
     pre = _pre_check(prompt)
     if pre is not None:
         return pre
 
-    agent: Agent[None, str] = Agent(compile_model(), system_prompt=SYSTEM_PROMPT, output_type=str)
+    chat_model = compile_model_for(model) if model else compile_model()
+    agent: Agent[None, str] = Agent(chat_model, system_prompt=SYSTEM_PROMPT, output_type=str)
     try:
         result = await agent.run(prompt)
     except UnexpectedModelBehavior as exc:  # pragma: no cover — runtime LLM hiccup

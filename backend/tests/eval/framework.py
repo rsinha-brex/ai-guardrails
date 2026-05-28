@@ -9,15 +9,13 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Literal, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID, uuid4
 
 from app.engine.engine import CheckResult, RuleEngine, RuleSnapshot
 from app.engine.expressions import FakeJudgeClient
 from app.schemas.conversation_state import ConversationState
-
 from tests.eval.taxonomy import Family, Group, InputShape
-
 
 # --------------------------------------------------------------------------- #
 # Evidence — what the runner records, what assertions read
@@ -58,11 +56,11 @@ class AssertionResult:
     reason: str
 
     @classmethod
-    def passes(cls, msg: str = "") -> "AssertionResult":
+    def passes(cls, msg: str = "") -> AssertionResult:
         return cls(True, msg)
 
     @classmethod
-    def fails(cls, msg: str) -> "AssertionResult":
+    def fails(cls, msg: str) -> AssertionResult:
         return cls(False, msg)
 
 
@@ -290,6 +288,137 @@ class StateFieldSet:
 
 
 # --------------------------------------------------------------------------- #
+# Agent-runner assertions — read from `ev.tool_calls`,
+# `ev.extra["tool_call_args"]`, and `ev.audit_events` populated by the
+# agent_unit / agent_e2e runners.
+# --------------------------------------------------------------------------- #
+
+
+@dataclass
+class ToolCalledWithArgs:
+    """Assert a tool was called with at least the specified args (subset match)."""
+
+    name: str
+    args_subset: dict[str, Any]
+
+    def check(self, ev: Evidence) -> AssertionResult:
+        pairs = (ev.extra or {}).get("tool_call_args") or []
+        for p in pairs:
+            if p.get("name") != self.name:
+                continue
+            actual = p.get("args") or {}
+            if all(actual.get(k) == v for k, v in self.args_subset.items()):
+                return AssertionResult.passes(
+                    f"{self.name} called with {self.args_subset}"
+                )
+        return AssertionResult.fails(
+            f"{self.name} not called with {self.args_subset}; saw {pairs}"
+        )
+
+
+@dataclass
+class ToolCallOrder:
+    """Assert `ev.tool_calls` contains the given subsequence in order.
+
+    Doesn't require contiguity — `["a", "b"]` matches `[a, x, b]`.
+    """
+
+    sequence: list[str]
+
+    def check(self, ev: Evidence) -> AssertionResult:
+        i = 0
+        for name in ev.tool_calls:
+            if i < len(self.sequence) and name == self.sequence[i]:
+                i += 1
+        if i == len(self.sequence):
+            return AssertionResult.passes(f"order {self.sequence} satisfied")
+        return AssertionResult.fails(
+            f"order {self.sequence} not satisfied; saw {ev.tool_calls}"
+        )
+
+
+@dataclass
+class AuditEventEmitted:
+    """Assert at least one audit event matches the given filters.
+
+    Each filter is optional; only set ones must match. `fired_rule_substring`
+    matches case-insensitively against the audit event's `fired_rule_name`.
+    """
+
+    event_type: str
+    outcome: str | None = None
+    tool_name: str | None = None
+    fired_rule_substring: str | None = None
+
+    def check(self, ev: Evidence) -> AssertionResult:
+        for e in ev.audit_events:
+            if e.get("event_type") != self.event_type:
+                continue
+            if self.outcome is not None and e.get("outcome") != self.outcome:
+                continue
+            if self.tool_name is not None and e.get("tool_name") != self.tool_name:
+                continue
+            if self.fired_rule_substring is not None:
+                name = (e.get("fired_rule_name") or "").lower()
+                if self.fired_rule_substring.lower() not in name:
+                    continue
+            return AssertionResult.passes(
+                f"audit {self.event_type}/{self.outcome or '*'} matched"
+            )
+        summary = [
+            f"{e.get('event_type')}/{e.get('outcome')}/{e.get('fired_rule_name')}"
+            for e in ev.audit_events
+        ]
+        return AssertionResult.fails(
+            f"no audit event matched event_type={self.event_type!r} "
+            f"outcome={self.outcome!r} rule_substring={self.fired_rule_substring!r}; "
+            f"saw {summary}"
+        )
+
+
+@dataclass
+class AuditEventCount:
+    """Assert the audit log contains exactly N events of the given type."""
+
+    event_type: str
+    expected: int
+
+    def check(self, ev: Evidence) -> AssertionResult:
+        n = sum(1 for e in ev.audit_events if e.get("event_type") == self.event_type)
+        if n == self.expected:
+            return AssertionResult.passes(f"{n} {self.event_type} events")
+        return AssertionResult.fails(
+            f"expected {self.expected} {self.event_type} events, got {n}"
+        )
+
+
+@dataclass
+class FiredRuleNamesContains:
+    """Assert each substring appears in at least one fired-rule name across audit events."""
+
+    substrings: list[str]
+
+    def __init__(self, *substrings: str):
+        self.substrings = list(substrings)
+
+    def check(self, ev: Evidence) -> AssertionResult:
+        seen = [
+            (e.get("fired_rule_name") or "")
+            for e in ev.audit_events
+            if e.get("fired_rule_name")
+        ]
+        seen_lower = [s.lower() for s in seen]
+        missing = [
+            s for s in self.substrings if not any(s.lower() in n for n in seen_lower)
+        ]
+        if not missing:
+            return AssertionResult.passes(f"all substrings present in {seen}")
+        return AssertionResult.fails(
+            f"missing substrings {missing}; fired rule names: {seen}"
+        )
+
+
+# --------------------------------------------------------------------------- #
 # EvalCase + registry
 # --------------------------------------------------------------------------- #
 
@@ -301,7 +430,13 @@ class EvalCase:
     input_shape: InputShape
     group: Group
     title: str
-    runner_kind: Literal["engine", "compile", "agent_one_shot", "agent_multi_turn"]
+    runner_kind: Literal[
+        "engine",
+        "compile",
+        "compile_and_probe",
+        "agent_unit",
+        "agent_e2e",
+    ]
     inputs: dict[str, Any] = field(default_factory=dict)
     rules: list[RuleSnapshot] = field(default_factory=list)
     state: dict[str, Any] = field(default_factory=dict)
@@ -449,15 +584,17 @@ async def run_compile_and_probe_case(case: EvalCase, *, sample_index: int = 0) -
 
     prompt = case.inputs.get("prompt", "")
     probes = case.inputs.get("probes", []) or []
+    model = case.inputs.get("model")  # optional OpenRouter override
 
     try:
-        result = await compile_rule(prompt)
+        result = await compile_rule(prompt, model=model)
     except Exception as exc:  # network blip / LLM hiccup
         return Evidence(
             case_id=case.id,
             runner_kind="compile_and_probe",
             sample_index=sample_index,
             error=f"{type(exc).__name__}: {exc}",
+            extra={"model": model or "(default)"},
         )
 
     if isinstance(result, CompileFailure):
@@ -529,6 +666,7 @@ async def run_compile_and_probe_case(case: EvalCase, *, sample_index: int = 0) -
         probe_results.append(
             {
                 "args": args,
+                "state": state,
                 "expect": expected,
                 "actual": outcome.outcome,
                 "primary_rule": outcome.primary_rule_name,
@@ -543,6 +681,7 @@ async def run_compile_and_probe_case(case: EvalCase, *, sample_index: int = 0) -
         compile_kind=compile_kind,
         compile_rule=result,
         probe_results=probe_results,
+        extra={"model": model or "(default — COMPILE_MODEL env)"},
     )
 
 
@@ -554,8 +693,235 @@ def run_case(case: EvalCase, *, sample_index: int = 0) -> Evidence:
         return asyncio.run(run_compile_case(case, sample_index=sample_index))
     if case.runner_kind == "compile_and_probe":
         return asyncio.run(run_compile_and_probe_case(case, sample_index=sample_index))
+    if case.runner_kind == "agent_unit":
+        return asyncio.run(run_agent_unit_case(case, sample_index=sample_index))
+    if case.runner_kind == "agent_e2e":
+        return asyncio.run(run_agent_e2e_case(case, sample_index=sample_index))
     raise NotImplementedError(
         f"runner_kind={case.runner_kind!r} not yet wired in this lib"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Agent runners — exercise the full agent path (tool routing, engine,
+# audit roundtrip) against either a scripted FunctionModel (deterministic,
+# `agent_unit`) or the live LLM (probabilistic, `agent_e2e`).
+#
+# Both bypass the DB via the `_test_engine` / `_test_business` /
+# `_test_audit_sink` hooks on `AgentDeps`, so cases can install a
+# `RuleEngine` directly from `RuleSnapshot` fixtures and inspect the audit
+# trail without spinning up a database.
+# --------------------------------------------------------------------------- #
+
+
+def _extract_tool_calls(messages: list) -> tuple[list[str], list[dict[str, Any]]]:
+    """Walk an `agent.run` message history and pull tool-call names + args.
+
+    Pydantic AI stores tool calls as `ToolCallPart` instances inside
+    `ModelResponse.parts`. `ToolCallPart.args` may be a dict or a JSON
+    string depending on how the model emitted them — we normalize to dict.
+    """
+    import json as _json
+
+    from pydantic_ai.messages import ModelResponse, ToolCallPart  # local import
+
+    names: list[str] = []
+    pairs: list[dict[str, Any]] = []
+    for m in messages:
+        if not isinstance(m, ModelResponse):
+            continue
+        for part in m.parts:
+            if isinstance(part, ToolCallPart):
+                args = part.args
+                if isinstance(args, str):
+                    try:
+                        args = _json.loads(args)
+                    except Exception:
+                        args = {"_raw": args}
+                names.append(part.tool_name)
+                pairs.append({"name": part.tool_name, "args": args or {}})
+    return names, pairs
+
+
+async def run_agent_unit_case(case: EvalCase, *, sample_index: int = 0) -> Evidence:
+    """Deterministic agent runner — uses Pydantic AI's `FunctionModel` to
+    emit a scripted sequence of `ToolCallPart`s, ending with a final
+    `TextPart` once the script is exhausted.
+
+    Expected `case.inputs`:
+      {
+        "message": str,                      # what the customer typed
+        "scripted_tool_calls": [             # in order
+          (tool_name, args_dict), ...
+        ],
+        "final_text": str | None,            # assistant reply after last tool
+        "current_time": datetime | None,
+        "judge": JudgeClient | None,
+      }
+    """
+
+    from pydantic_ai import Agent
+    from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+    from pydantic_ai.models.function import AgentInfo, FunctionModel
+
+    from app.agent.agent import _system_prompt as _agent_system_prompt
+    from app.agent.tools import AgentDeps, all_tools
+
+    message = case.inputs.get("message", "")
+    scripted: list[tuple[str, dict[str, Any]]] = list(
+        case.inputs.get("scripted_tool_calls") or []
+    )
+    final_text = case.inputs.get("final_text", "OK.")
+
+    business = case.inputs.get("business") or _DEFAULT_BUSINESS
+    current_time = case.inputs.get("current_time") or _DEFAULT_TIME
+    judge = case.inputs.get("judge") or FakeJudgeClient()
+    engine = RuleEngine(case.rules, judge=judge)
+
+    sink: list[dict[str, Any]] = []
+    deps = AgentDeps(
+        db=None,
+        business_id=business.id,
+        conversation_id=uuid4(),
+        customer_identifier="eval-customer",
+        current_time=current_time,
+        judge=judge,
+        state=dict(case.state),
+        _test_engine=engine,
+        _test_business=business,
+        _test_audit_sink=sink,
+    )
+
+    step = {"i": 0}
+
+    async def model_fn(messages, info: AgentInfo) -> ModelResponse:
+        if step["i"] < len(scripted):
+            name, args = scripted[step["i"]]
+            step["i"] += 1
+            return ModelResponse(parts=[ToolCallPart(tool_name=name, args=dict(args))])
+        return ModelResponse(parts=[TextPart(content=final_text)])
+
+    agent: Agent[AgentDeps, str] = Agent(
+        FunctionModel(model_fn),
+        deps_type=AgentDeps,
+        tools=all_tools(),
+        retries=0,  # see plan §5 risk #6 — auto-retry would skew the script counter
+    )
+    agent.system_prompt(_agent_system_prompt)
+
+    try:
+        result = await agent.run(message, deps=deps)
+    except Exception as exc:
+        return Evidence(
+            case_id=case.id,
+            runner_kind="agent_unit",
+            sample_index=sample_index,
+            error=f"{type(exc).__name__}: {exc}",
+            audit_events=sink,
+            state_after=dict(deps.state),
+        )
+
+    names, pairs = _extract_tool_calls(result.all_messages())
+    return Evidence(
+        case_id=case.id,
+        runner_kind="agent_unit",
+        sample_index=sample_index,
+        response_text=str(result.output),
+        tool_calls=names,
+        audit_events=sink,
+        state_after=dict(deps.state),
+        extra={"tool_call_args": pairs},
+    )
+
+
+async def run_agent_e2e_case(case: EvalCase, *, sample_index: int = 0) -> Evidence:
+    """Probabilistic agent runner — uses the real OpenRouter model at the
+    case's configured temperature (default 0). Captures tool calls and the
+    final response without scripting any model output.
+
+    Expected `case.inputs`:
+      {
+        "message": str,                      # what the customer typed
+        "model": str | None,                 # OpenRouter slug override
+        "temperature": float | None,         # default 0
+        "current_time": datetime | None,
+        "judge": JudgeClient | None,
+      }
+    """
+    import os
+
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        # Mirrors compile_and_probe's behavior: skip cleanly if no key.
+        return Evidence(
+            case_id=case.id,
+            runner_kind="agent_e2e",
+            sample_index=sample_index,
+            error="OPENROUTER_API_KEY unset — skipping live LLM",
+        )
+
+    from pydantic_ai import Agent
+
+    from app.agent.agent import _system_prompt as _agent_system_prompt
+    from app.agent.openrouter import main_model_for
+    from app.agent.tools import AgentDeps, all_tools
+
+    message = case.inputs.get("message", "")
+    model_name = case.inputs.get("model")
+    temperature = case.inputs.get("temperature", 0)
+
+    business = case.inputs.get("business") or _DEFAULT_BUSINESS
+    current_time = case.inputs.get("current_time") or _DEFAULT_TIME
+    judge = case.inputs.get("judge") or FakeJudgeClient()
+    engine = RuleEngine(case.rules, judge=judge)
+
+    sink: list[dict[str, Any]] = []
+    deps = AgentDeps(
+        db=None,
+        business_id=business.id,
+        conversation_id=uuid4(),
+        customer_identifier="eval-customer",
+        current_time=current_time,
+        judge=judge,
+        state=dict(case.state),
+        _test_engine=engine,
+        _test_business=business,
+        _test_audit_sink=sink,
+    )
+
+    agent: Agent[AgentDeps, str] = Agent(
+        main_model_for(model_name, temperature=temperature),
+        deps_type=AgentDeps,
+        tools=all_tools(),
+        retries=2,  # tolerate one transient hiccup; not enough to skew the test
+    )
+    agent.system_prompt(_agent_system_prompt)
+
+    try:
+        result = await agent.run(message, deps=deps)
+    except Exception as exc:
+        return Evidence(
+            case_id=case.id,
+            runner_kind="agent_e2e",
+            sample_index=sample_index,
+            error=f"{type(exc).__name__}: {exc}",
+            audit_events=sink,
+            state_after=dict(deps.state),
+            extra={"model": model_name or "(default — MAIN_MODEL env)"},
+        )
+
+    names, pairs = _extract_tool_calls(result.all_messages())
+    return Evidence(
+        case_id=case.id,
+        runner_kind="agent_e2e",
+        sample_index=sample_index,
+        response_text=str(result.output),
+        tool_calls=names,
+        audit_events=sink,
+        state_after=dict(deps.state),
+        extra={
+            "tool_call_args": pairs,
+            "model": model_name or "(default — MAIN_MODEL env)",
+        },
     )
 
 

@@ -22,6 +22,9 @@ def record(case: EvalCase, ev: Evidence, ok: bool, asserts: list, sample_idx: in
             "assertions": [{"ok": a.ok, "reason": a.reason} for a in asserts],
             "deterministic": case.deterministic,
             "evidence_summary": _summarize(ev),
+            "model": (ev.extra or {}).get("model"),
+            "compile_rule_type": getattr(ev.compile_rule, "rule_type", None),
+            "probe_results": list(ev.probe_results) if ev.probe_results else [],
             "notes": case.notes,
         }
     )
@@ -47,10 +50,15 @@ def _summarize(ev: Evidence) -> str:
             parts.append(f"needs={ev.check_result.required_fields}")
     if ev.compile_kind:
         parts.append(f"compile_kind={ev.compile_kind}")
+        if getattr(ev.compile_rule, "rule_type", None):
+            parts.append(f"rule_type={ev.compile_rule.rule_type}")
         if ev.compile_failure is not None:
             rat = getattr(ev.compile_failure, "rationale", "") or ""
             if rat:
                 parts.append(f"reason={rat[:80]!r}")
+    if ev.probe_results:
+        matches = sum(1 for p in ev.probe_results if p.get("match"))
+        parts.append(f"probes={matches}/{len(ev.probe_results)}")
     if ev.error:
         parts.append(f"ERROR: {ev.error}")
     return "; ".join(parts) or "(no evidence)"

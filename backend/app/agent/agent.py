@@ -1,7 +1,7 @@
 """Main agent factory — wires the tools and dynamic system prompt."""
 from __future__ import annotations
 
-from datetime import datetime
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic_ai import Agent, RunContext
@@ -28,7 +28,39 @@ def build_agent() -> Agent[AgentDeps, str]:
     return agent
 
 
+@dataclass
+class _SnapshotRuleAdapter:
+    """Wraps a `RuleSnapshot` so `format_rule_catalog` (which expects ORM
+    `Rule` row attributes) can render it without crashing under the eval
+    lib's test path. Snapshots don't carry `description` /
+    `applies_when_description` / `is_active`; we provide safe defaults.
+    """
+
+    rule_type: str
+    name: str
+    parameters: dict[str, Any]
+    description: str = ""
+    applies_when_description: str = ""
+    is_active: bool = True
+
+
 def system_prompt_for(deps: AgentDeps) -> str:
+    # Eval lib path: reuse the engine + business injected on `deps`. No DB
+    # access. Snapshots are wrapped so `format_rule_catalog` doesn't crash
+    # on missing ORM fields.
+    if deps._test_engine is not None:
+        rules = [
+            _SnapshotRuleAdapter(
+                rule_type=r.rule_type,
+                name=r.name,
+                parameters=r.parameters,
+            )
+            for r in deps._test_engine.rules
+        ]
+        return build_system_prompt(
+            deps._test_business, rules, current_time=deps.current_time
+        )
+
     business = deps.db.get(Business, deps.business_id)
     rules = (
         deps.db.execute(

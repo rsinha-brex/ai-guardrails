@@ -7,10 +7,10 @@ walking the registered cases at session end and emitted into the report.
 from __future__ import annotations
 
 from collections import Counter
-from enum import Enum
+from enum import Enum, StrEnum
 
 
-class Family(str, Enum):
+class Family(StrEnum):
     A = "A"  # pure typed rules (deterministic)
     B = "B"  # group-scoped triggers (typed-rule semantics via conditional_block)
     C = "C"  # preconditioned rules (block-unless-state-X)
@@ -22,9 +22,11 @@ class Family(str, Enum):
     EX = "EX"  # exotic-supported (E1–E10)
     DIS = "DIS"  # architecture-disposition (E11/E17/E18/E19/E20)
     ADV = "ADV"  # adversarial input shapes (S10–S22 illustrative)
+    AGT = "AGT"  # agent tool-call routing (deterministic via FunctionModel)
+    E2E = "E2E"  # end-to-end NL → agent → tool (live LLM, probabilistic)
 
 
-class InputShape(str, Enum):
+class InputShape(StrEnum):
     S1 = "S1"   # well-formed canonical
     S2 = "S2"   # missing required fields
     S3 = "S3"   # implicit fields
@@ -65,7 +67,7 @@ class Group(int, Enum):
     G10 = 10 # adversarial & edge cases
 
 
-DETERMINISTIC_GROUPS = {Group.G1, Group.G2, Group.G3, Group.G4}
+DETERMINISTIC_GROUPS = {Group.G1, Group.G2, Group.G3, Group.G4, Group.G7}
 
 
 def coverage_matrix(cases: list) -> dict[tuple[str, str], int]:

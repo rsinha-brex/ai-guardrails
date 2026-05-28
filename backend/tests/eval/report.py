@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -54,7 +54,7 @@ GROUP_DESC = {
 
 def write_report(results: list[dict]) -> Path:
     RESULTS_DIR.mkdir(exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     md_path = RESULTS_DIR / f"{stamp}.md"
     latest_path = RESULTS_DIR / "latest.md"
     jsonl_path = RESULTS_DIR / f"{stamp}.jsonl"
@@ -98,6 +98,9 @@ def _render_markdown(results: list[dict]) -> str:
                 "status": status,
                 "evidence": first["evidence_summary"],
                 "assertions": first["assertions"],
+                "model": first.get("model"),
+                "compile_rule_type": first.get("compile_rule_type"),
+                "probe_results": first.get("probe_results", []),
                 "notes": first["notes"],
             }
         )
@@ -110,7 +113,7 @@ def _render_markdown(results: list[dict]) -> str:
 
     lines: list[str] = []
     lines.append("# Guardrail Evals Report\n")
-    lines.append(f"Generated: {datetime.now(timezone.utc).isoformat()}\n\n")
+    lines.append(f"Generated: {datetime.now(UTC).isoformat()}\n\n")
 
     # ---------- Summary ----------
     lines.append("## Headline\n\n")
@@ -134,6 +137,10 @@ def _render_markdown(results: list[dict]) -> str:
     # ---------- Architecture posture ----------
     lines.append("\n## Architecture posture — explicit non-support\n\n")
     lines.append(_disposition_section(rows))
+
+    # ---------- Compile pipeline (Group 9) ----------
+    lines.append("\n## Compile pipeline (Group 9 — live LLM, end-to-end)\n\n")
+    lines.append(_compile_pipeline_section(rows))
 
     # ---------- Per-family ----------
     lines.append("\n## Cases by family\n\n")
@@ -394,6 +401,72 @@ def _disposition_section(rows: list[dict]) -> str:
         out.append(
             f"| `{r['id']}` | {r['title']} | {notes[:80]} | {r['status']} |\n"
         )
+    return "".join(out)
+
+
+def _compile_pipeline_section(rows: list[dict]) -> str:
+    """Group 9 — full NL→compile→engine pipeline cases.
+
+    These are the only rows that exercise a *live* LLM compile end-to-end, so
+    they get their own section showing per-probe expected vs. actual outcomes
+    plus the model that was used for the compile step (so cross-model
+    comparisons are visible at a glance).
+    """
+    g9 = [r for r in rows if r["group"] == 9]
+    if not g9:
+        return (
+            "_(no Group 9 cases registered yet — register a case via "
+            "`runner_kind=\"compile_and_probe\"` to see live LLM compile "
+            "results here)_\n"
+        )
+
+    out: list[str] = []
+    out.append(
+        "Each row below ran a real OpenRouter compile call against a NL prompt, "
+        "installed the resulting `CompiledRule` on a fresh `RuleEngine`, and "
+        "then ran the listed probes against it. This is the only section that "
+        "validates the *agent's* NL→rule loop end-to-end (vs. families A–F "
+        "which evaluate hand-written rule fixtures).\n\n"
+    )
+    out.append(
+        "| Case | Status | Model | Compiled rule_type | Probes (✓/total) | Title |\n"
+    )
+    out.append("| --- | --- | --- | --- | --- | --- |\n")
+    for r in g9:
+        probes = r.get("probe_results") or []
+        matches = sum(1 for p in probes if p.get("match"))
+        model = (r.get("model") or "(default compile_model)").replace("|", "\\|")
+        rule_type = r.get("compile_rule_type") or "—"
+        title = r["title"][:60].replace("|", "\\|")
+        samples_str = (
+            "" if r["samples"] == 1 else f" ({r['passed']}/{r['samples']} samples)"
+        )
+        out.append(
+            f"| `{r['id']}` | {r['status']}{samples_str} | `{model}` | "
+            f"{rule_type} | {matches}/{len(probes)} | {title} |\n"
+        )
+
+    # Per-probe detail block — only render when there's meaningful detail to show.
+    detail: list[str] = []
+    for r in g9:
+        probes = r.get("probe_results") or []
+        if not probes:
+            continue
+        detail.append(f"\n**`{r['id']}` — {r['title']}**\n\n")
+        detail.append("| # | Probe args | State | Expected | Actual | Match |\n")
+        detail.append("| --- | --- | --- | --- | --- | --- |\n")
+        for i, p in enumerate(probes, 1):
+            args = json.dumps(p.get("args", {}), separators=(",", ":"))[:60].replace("|", "\\|")
+            state = json.dumps(p.get("state", {}), separators=(",", ":"))[:40].replace("|", "\\|")
+            expected = p.get("expect", "—")
+            actual = p.get("actual_outcome") or p.get("actual") or "—"
+            mark = "✅" if p.get("match") else "❌"
+            detail.append(f"| {i} | `{args}` | `{state}` | {expected} | {actual} | {mark} |\n")
+
+    if detail:
+        out.append("\n#### Per-probe detail\n")
+        out.extend(detail)
+
     return "".join(out)
 
 

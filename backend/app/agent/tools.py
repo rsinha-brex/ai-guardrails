@@ -17,10 +17,9 @@ from pydantic_ai.tools import Tool
 from sqlalchemy import select
 
 from app.engine.engine import RuleEngine, RuleSnapshot
-from app.models import Business, Conversation, Rule
+from app.models import Business, Rule
 from app.schemas.conversation_state import STATE_FIELDS, ConversationState
 from app.services import audit
-
 
 # --------------------------------------------------------------------------- #
 # Deps + ToolResult
@@ -29,7 +28,7 @@ from app.services import audit
 
 @dataclass
 class AgentDeps:
-    db: Any  # sqlalchemy Session
+    db: Any  # sqlalchemy Session — None when running under the eval lib's test hooks
     business_id: UUID
     conversation_id: UUID
     customer_identifier: str
@@ -41,6 +40,16 @@ class AgentDeps:
     # Bookkeeping for the conversation row at end of turn.
     blocked_rule_ids: set[UUID] = field(default_factory=set)
     accepted_action: bool = False
+
+    # --- Test-only hooks (None in production) -------------------------------
+    # The eval lib's `agent_unit` and `agent_e2e` runners set these so the
+    # agent path runs without a SQLAlchemy session: `_load_engine` returns
+    # `_test_engine`/`_test_business` directly, and `_audit` appends dicts
+    # to `_test_audit_sink` instead of calling `audit.record`. Production
+    # code paths are untouched when these are None.
+    _test_engine: Any | None = None
+    _test_business: Any | None = None
+    _test_audit_sink: list[dict[str, Any]] | None = None
 
 
 class ToolResult(BaseModel):
@@ -67,11 +76,38 @@ def _load_engine(db, business_id: UUID, judge: Any) -> tuple[RuleEngine, Busines
     return RuleEngine.for_business(rules, judge=judge), biz
 
 
+def _load_engine_for(deps: AgentDeps) -> tuple[RuleEngine, Any]:
+    """Return the engine + business for the current request.
+
+    In production, loads from the DB. Under the eval lib's test hooks
+    (`deps._test_engine` set), returns the pre-built engine and the stub
+    business object — no DB session required.
+    """
+    if deps._test_engine is not None:
+        return deps._test_engine, deps._test_business
+    return _load_engine(deps.db, deps.business_id, deps.judge)
+
+
 def _audit(deps: AgentDeps, **kw: Any) -> None:
     """Thin wrapper that captures the 4 always-identical audit.record kwargs
     (db, business_id, conversation_id, customer_identifier) so call sites
     only have to specify the per-event fields.
+
+    When `deps._test_audit_sink` is set (eval lib), the kwargs are appended
+    to the sink as a dict — same shape `audit.record` would have written —
+    and `audit.record` is not called. This lets agent tests assert on the
+    exact audit trail without spinning up a DB.
     """
+    if deps._test_audit_sink is not None:
+        deps._test_audit_sink.append(
+            {
+                "business_id": deps.business_id,
+                "conversation_id": deps.conversation_id,
+                "customer_identifier": deps.customer_identifier,
+                **kw,
+            }
+        )
+        return
     audit.record(
         deps.db,
         business_id=deps.business_id,
@@ -121,7 +157,7 @@ def _check_and_audit(
     *,
     proposed_action: dict[str, Any] | None = None,
 ) -> ToolResult:
-    engine, biz = _load_engine(deps.db, deps.business_id, deps.judge)
+    engine, biz = _load_engine_for(deps)
     state_obj = ConversationState.model_validate(deps.state)
     result = engine.check(tool_name, args, biz, state_obj, deps.current_time)
 
@@ -317,7 +353,7 @@ async def escalate_to_human(
 
 async def lookup_relevant_rules(ctx: RunContext[AgentDeps], tool_name: str) -> dict[str, Any]:
     """Return the names + descriptions of rules that would apply to a tool call."""
-    engine, _ = _load_engine(ctx.deps.db, ctx.deps.business_id, ctx.deps.judge)
+    engine, _ = _load_engine_for(ctx.deps)
     relevant = [
         {
             "name": r.name,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { api, type Business } from "@/lib/api";
@@ -20,6 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [open, setOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement | null>(null);
   const businessId = businessIdFromUrl || businesses[0]?.id || "";
 
   useEffect(() => {
@@ -28,6 +29,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // recovering from anything.
     api.businesses.list().then(setBusinesses).catch(() => {});
   }, []);
+
+  // Close the business dropdown on outside click + Escape. Without this,
+  // the dropdown overlays the chat panel's live activity rail and stays
+  // open even as the user starts chatting — losing visibility of every
+  // tool call as it streams in.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   const current = businesses.find((b) => b.id === businessId);
 
@@ -50,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Demo
             </span>
           </div>
-          <div className="relative">
+          <div className="relative" ref={switcherRef}>
             <button
               type="button"
               onClick={() => setOpen((o) => !o)}

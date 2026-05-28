@@ -37,9 +37,21 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="AI Guardrails", lifespan=lifespan)
 
+# CORS allow-list — env-driven so deployments can add their Vercel /
+# Railway origins without a code change. Default is the local dev
+# frontend ports. Set CORS_ORIGINS as a comma-separated list to override.
+import os as _os
+
+_default_origins = "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
+_cors_origins = [
+    o.strip()
+    for o in _os.environ.get("CORS_ORIGINS", _default_origins).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

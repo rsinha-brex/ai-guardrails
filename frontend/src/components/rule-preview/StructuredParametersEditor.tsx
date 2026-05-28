@@ -104,14 +104,36 @@ function BusinessHoursEditor({ parameters, onChange }: { parameters: Params; onC
       </Field>
       <div className="space-y-1">
         <Label>weekly hours</Label>
+        {closedDays.length > 0 && (
+          <div className="text-xs text-ink-muted -mt-0.5 mb-1.5">
+            Closed:{" "}
+            <span className="font-mono uppercase tracking-wide text-ink-soft">
+              {closedDays
+                .slice()
+                .sort((a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b))
+                .join(", ")}
+            </span>
+          </div>
+        )}
         <div className="rounded-md border border-border overflow-hidden divide-y divide-border">
           {WEEKDAYS.map((day) => {
             const range = hours[day];
             const isClosed = closedDays.includes(day);
             return (
-              <div key={day} className="flex items-center gap-2 px-3 py-2 bg-bg-elevated">
+              <div
+                key={day}
+                className={
+                  "flex items-center gap-2 px-3 py-2 " +
+                  (isClosed ? "bg-bg-subtle" : "bg-bg-elevated")
+                }
+              >
                 <div className="w-10 text-xs font-mono uppercase text-ink-muted">{day}</div>
-                <label className="text-xs flex items-center gap-1 cursor-pointer text-ink-muted">
+                <label
+                  className={
+                    "text-xs flex items-center gap-1 cursor-pointer " +
+                    (isClosed ? "text-ink-soft font-medium" : "text-ink-muted")
+                  }
+                >
                   <input
                     type="checkbox"
                     checked={isClosed}

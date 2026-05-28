@@ -1,0 +1,17 @@
+# Railway service config for the FastAPI backend.
+#
+# Railway picks up Python projects automatically via Nixpacks. We only
+# need to override the start command so it binds to $PORT (Railway sets
+# this) and listens on 0.0.0.0 (so the platform's load balancer can
+# reach it). uv is installed by Nixpacks when it sees pyproject.toml +
+# uv.lock; everything else (Python 3.12, deps) is auto-detected.
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

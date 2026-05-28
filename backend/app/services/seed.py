@@ -738,7 +738,12 @@ def _atlantic_pool() -> dict[str, Any]:
             _r("conditional_block", "Seasonal closure for pool services Nov–Mar",
                "Pool maintenance and opening services are seasonal (April-October).",
                {"trigger": {"op": "any_of", "children": [
-                   {"op": "in", "field": "args.month", "value": [11, 12, 1, 2, 3]},
+                   # Match Nov, Dec, Jan, Feb, Mar in YYYY-MM-DD via regex on
+                   # `args.date`. The agent's book_appointment tool only emits
+                   # `date`, not a separate `month` arg, so deriving from
+                   # `args.date` is what actually fires.
+                   {"op": "matches_regex", "field": "args.date",
+                    "value": r"^\d{4}-(11|12|01|02|03)-\d{2}$"},
                    {"op": "contains", "field": "state.reported_issue", "value": "winter"},
                ]},
                 "block_message": "Pool services pause November through March — we'll be back in April."},
@@ -798,7 +803,10 @@ def _prairiefence() -> dict[str, Any]:
                "Fence installs are blocked December through February (frozen ground).",
                {"trigger": {"op": "all_of", "children": [
                    {"op": "eq", "field": "args.service_type", "value": "fence_install"},
-                   {"op": "in", "field": "args.month", "value": [12, 1, 2]},
+                   # Same fix as Atlantic seasonal: derive month from date
+                   # via regex (Dec / Jan / Feb).
+                   {"op": "matches_regex", "field": "args.date",
+                    "value": r"^\d{4}-(12|01|02)-\d{2}$"},
                ]},
                 "block_message": "We can't install in frozen ground — we'll book you for spring (March on)."},
                applies_to_tools=["book_appointment"], priority=150,
@@ -823,7 +831,7 @@ def _gardenworks() -> dict[str, Any]:
                 "85016","85017","85018","85019","85020","85021","85022","85023","85024","85027",
                 "85028","85029","85031","85032","85033","85034","85035","85037","85040","85041",
             ], "We cover Phoenix metro — try a regional irrigation company."),
-            _services_rule(["irrigation_install","irrigation_repair","drip_install","sprinkler_repair"],
+            _services_rule(["irrigation","irrigation_install","irrigation_repair","drip_install","sprinkler_repair"],
                            "Irrigation only."),
             _r("output_constraint", "Mention water-restriction tier",
                "Phoenix has tiered watering rules — mention them when relevant.",

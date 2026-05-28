@@ -1191,12 +1191,16 @@ def _seed_demo_block_hours(
 ) -> None:
     """A booking blocked by Standard hours (Sunday request)."""
     conv = _new_conv(db, business, "Demo · Sunday block #s2b9")
-    _msg(db, conv, "user", "Can someone come out this Sunday morning to fix my AC?")
+    _msg(db, conv, "user", "Can someone come out this Sunday morning to fix my AC, ZIP 32801?")
+    state = {"address_zip": "32801", "is_homeowner": True}
+    conv.state = state
+    _audit_state_update(db, conv, business, "address_zip", "32801")
+    _audit_state_update(db, conv, business, "is_homeowner", True)
     _audit_for_check(
         db, conv, business, rules,
         "book_appointment",
-        {"date": "2026-06-21", "time": "10:00", "service_type": "hvac"},
-        {},
+        {"date": "2026-06-21", "time": "10:00", "service_type": "hvac", "address_zip": "32801"},
+        state,
         ref,
     )
     _msg(db, conv, "assistant", "We're closed Sundays — let me know a weekday that works and I'll get you booked.")
@@ -1230,11 +1234,12 @@ def _seed_demo_needs_info(
     state = {"address_zip": "32801"}
     conv.state = state
     _audit_state_update(db, conv, business, "address_zip", "32801")
-    # First booking attempt — needs_info on is_homeowner
+    # First booking attempt — needs_info on is_homeowner (homeowner rule will fire)
     args = {"date": "2026-06-16", "time": "10:00", "service_type": "hvac", "address_zip": "32801"}
     _audit_for_check(db, conv, business, rules, "book_appointment", args, state, ref)
     _msg(db, conv, "assistant", "Quick check — are you the homeowner at this address?")
     _msg(db, conv, "user", "Yes, I own.")
+    state = dict(state)
     state["is_homeowner"] = True
     conv.state = dict(state)
     _audit_state_update(db, conv, business, "is_homeowner", True)
@@ -1247,14 +1252,20 @@ def _seed_demo_service_not_offered(
 ) -> None:
     """The exact failure-mode case from the deploy bug: customer asks for
     a service the business doesn't offer; the agent calls the tool, the
-    engine blocks, the audit captures it."""
+    engine blocks, the audit captures it. Includes a valid ZIP so the
+    engine reaches the services_offered rule (otherwise it stops at the
+    service_area rule asking for a ZIP)."""
     conv = _new_conv(db, business, "Demo · Out-of-vocab service #pl5m")
-    _msg(db, conv, "user", "Can I book a plumbing appointment for Tuesday?")
+    _msg(db, conv, "user", "Can I book a plumbing appointment for Tuesday at ZIP 33156?")
+    state = {"address_zip": "33156", "is_homeowner": True}
+    conv.state = state
+    _audit_state_update(db, conv, business, "address_zip", "33156")
+    _audit_state_update(db, conv, business, "is_homeowner", True)
     _audit_for_check(
         db, conv, business, rules,
         "book_appointment",
-        {"date": "2026-06-16", "time": "10:00", "service_type": "plumbing"},
-        {},
+        {"date": "2026-06-16", "time": "10:00", "service_type": "plumbing", "address_zip": "33156"},
+        state,
         ref,
     )
     _msg(db, conv, "assistant", "We don't offer plumbing — only pools and hot tubs. Want me to suggest a referral?")

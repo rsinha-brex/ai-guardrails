@@ -112,6 +112,29 @@ def _check_and_audit(
             if fired.outcome == "block":
                 deps.blocked_rule_ids.add(fired.rule_id)
     else:
+        # Accepted path: write a `rule_considered` row for every applicable
+        # rule that passed FIRST, then the headline tool_call row last —
+        # the activity rail reads top-down chronologically, so this gives
+        # the natural story:
+        #   "we considered Standard hours → passed"
+        #   "we considered Service area → passed"
+        #   …
+        #   "book_appointment ACCEPTED ✓"
+        # Trade-off: ~5x audit row count on accepts; acceptable for the
+        # observability + per-business demo scale.
+        for rule in engine.rules:
+            if not rule.applies(tool_name) or rule.rule_type == "output_constraint":
+                continue
+            _audit(
+                deps,
+                event_type="rule_considered",
+                outcome="passed",
+                tool_name=tool_name,
+                fired_rule_id=rule.id,
+                fired_rule_type=rule.rule_type,
+                fired_rule_name=rule.name,
+                tool_args=args,
+            )
         _audit(
             deps,
             event_type="tool_call",

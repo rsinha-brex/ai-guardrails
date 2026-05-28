@@ -209,6 +209,29 @@ def format_output_constraints(rules: list[Any]) -> str:
     return "\n".join(items) or "(none specified)"
 
 
+def _format_calendar(current_time: datetime | None) -> str:
+    """Render a 14-day calendar starting from `current_time` so the agent
+    doesn't have to compute weekday-from-date itself.
+
+    LLMs are notoriously bad at "what weekday is 2026-06-01?" arithmetic;
+    leaving them to do it produces things like booking a Monday and
+    confidently calling it Sunday in the reply. Pre-computing the
+    mapping here costs <200 prompt tokens and removes the failure
+    mode entirely.
+    """
+    from datetime import timedelta
+
+    if current_time is None:
+        return "(calendar unavailable — current time not provided)"
+    base = current_time.date()
+    lines = []
+    for i in range(15):  # today + next 14 days
+        d = base + timedelta(days=i)
+        marker = " ← today" if i == 0 else " ← tomorrow" if i == 1 else ""
+        lines.append(f"  {d.isoformat()} = {d.strftime('%A')}{marker}")
+    return "\n".join(lines)
+
+
 def build_system_prompt(
     business: Any,
     rules: list[Any],
@@ -218,10 +241,12 @@ def build_system_prompt(
     catalog = format_rule_catalog(rules)
     constraints = format_output_constraints(rules)
     when = current_time.isoformat() if current_time else "(unknown)"
+    calendar = _format_calendar(current_time)
     return (
         f"{BASE_PROMPT}\n\n"
         f"# Business\n{business.name}\nTimezone: {business.timezone}\nDescription: {business.description}\n\n"
         f"# Current time (server)\n{when}\n\n"
+        f"# Calendar reference (next 15 days, USE THIS — don't guess weekdays)\n{calendar}\n\n"
         f"# Rules currently in effect\n{catalog}\n\n"
         f"# Communication guidelines\n{constraints}\n"
     )

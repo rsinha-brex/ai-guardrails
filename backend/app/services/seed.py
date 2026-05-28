@@ -11,6 +11,7 @@ touching conversations / audit history.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -18,7 +19,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db import session_scope
-from app.models import Business, Rule, TestCase
+from app.models import AuditLog, Business, Conversation, Message, Rule, TestCase
 
 log = logging.getLogger(__name__)
 
@@ -976,6 +977,286 @@ def run_if_empty() -> None:
             for rule in payload["rules"]:
                 _ensure_rule(db, biz.id, rule)
         log.info("seed: inserted 3 businesses with rule sets")
+    # Conversation seed is gated separately on the conversations table —
+    # so a fresh deploy gets demo activity without re-creating it on every
+    # subsequent boot, and a deploy that already has real conversations
+    # never has demo rows quietly inserted alongside them.
+    seed_demo_conversations_if_empty()
+
+
+def seed_demo_conversations_if_empty() -> None:
+    """Populate the activity feed with 5 representative conversations.
+
+    Only runs when the conversations table is empty (i.e. fresh deploy).
+    Each conversation is built by routing realistic args through the live
+    `RuleEngine`, then writing audit rows that mirror the shape
+    `_check_and_audit` produces in production — so the demo data on
+    /activity is structurally indistinguishable from a real chat. The
+    assistant text is hand-written deterministic copy (no LLM call needed).
+    """
+    with session_scope() as db:
+        any_conv = db.execute(select(Conversation.id).limit(1)).scalar_one_or_none()
+        if any_conv is not None:
+            log.info("seed: conversations already present, skipping demo seed")
+            return
+
+        from app.engine.engine import RuleEngine
+
+        # Build a quick lookup of rules per business so each demo can pick
+        # the right engine without re-querying.
+        businesses = db.execute(select(Business)).scalars().all()
+        rules_by_biz: dict[UUID, list[Rule]] = {b.id: [] for b in businesses}
+        for r in db.execute(select(Rule).where(Rule.is_active.is_(True))).scalars():
+            rules_by_biz.setdefault(r.business_id, []).append(r)
+        biz_by_id = {b.id: b for b in businesses}
+
+        sunrise_id = DEL_AIR_ID  # renamed in this codebase but the UUID is stable
+        atlantic_id = ATLANTIC_POOL_ID
+
+        # Reference time for the demos. Picked so demo "Tuesday 10 AM"
+        # is in the future relative to the seeded current_time.
+        ref = datetime(2026, 6, 15, 14, 0)  # Mon Jun 15 2 PM
+
+        if sunrise_id in biz_by_id:
+            _seed_demo_clean_accept(db, biz_by_id[sunrise_id], rules_by_biz[sunrise_id], ref)
+            _seed_demo_block_hours(db, biz_by_id[sunrise_id], rules_by_biz[sunrise_id], ref)
+            _seed_demo_block_zip(db, biz_by_id[sunrise_id], rules_by_biz[sunrise_id], ref)
+            _seed_demo_needs_info(db, biz_by_id[sunrise_id], rules_by_biz[sunrise_id], ref)
+        if atlantic_id in biz_by_id:
+            _seed_demo_service_not_offered(
+                db, biz_by_id[atlantic_id], rules_by_biz[atlantic_id], ref
+            )
+
+        log.info("seed: inserted demo conversations across activity")
+
+
+def _engine_for(rules: list[Rule]):
+    """Build a RuleEngine from active ORM rules — same shape the agent uses."""
+    from app.engine.engine import RuleEngine
+
+    return RuleEngine.for_business(rules, judge=None)
+
+
+def _new_conv(
+    db: Session,
+    business: Business,
+    customer: str,
+    state: dict[str, Any] | None = None,
+) -> Conversation:
+    conv = Conversation(
+        business_id=business.id,
+        customer_identifier=customer,
+        state=state or {},
+        message_count=0,
+        had_accepted_action=False,
+        had_blocked_action=False,
+        blocked_rule_ids=[],
+        is_test=False,
+        system_prompt_snapshot="(demo seed — system prompt not captured)",
+    )
+    db.add(conv)
+    db.flush()
+    return conv
+
+
+def _msg(db: Session, conv: Conversation, role: str, content: str) -> None:
+    db.add(Message(conversation_id=conv.id, role=role, content=content))
+    conv.message_count += 1
+
+
+def _audit_for_check(
+    db: Session,
+    conv: Conversation,
+    business: Business,
+    rules: list[Rule],
+    tool_name: str,
+    args: dict[str, Any],
+    state: dict[str, Any],
+    current_time: datetime,
+    *,
+    user_facing_block: str | None = None,
+) -> str:
+    """Run the rule engine for these args + write audit rows in the same
+    shape `_check_and_audit` produces. Returns the engine outcome
+    ('accepted' / 'blocked' / 'needs_info') so the caller can decide what
+    the assistant says next.
+    """
+    from app.engine.engine import RuleEngine
+    from app.schemas.conversation_state import ConversationState
+
+    engine = _engine_for(rules)
+    state_obj = ConversationState.model_validate(state)
+    result = engine.check(tool_name, args, business, state_obj, current_time)
+
+    if result.fired_rules:
+        for fired in result.fired_rules:
+            db.add(
+                AuditLog(
+                    business_id=business.id,
+                    conversation_id=conv.id,
+                    customer_identifier=conv.customer_identifier,
+                    event_type="tool_call",
+                    outcome="blocked" if fired.outcome == "block" else fired.outcome,
+                    tool_name=tool_name,
+                    fired_rule_id=fired.rule_id,
+                    fired_rule_type=fired.rule_type,
+                    fired_rule_name=fired.rule_name,
+                    tool_args=args,
+                    user_facing_message=fired.user_facing_message,
+                    internal_reason=fired.internal_reason,
+                    required_fields=fired.required_fields or None,
+                )
+            )
+            if fired.outcome == "block":
+                conv.had_blocked_action = True
+                conv.blocked_rule_ids = list(set(conv.blocked_rule_ids) | {fired.rule_id})
+    else:
+        # rule_considered rows precede the headline tool_call row
+        for rule in rules:
+            if rule.rule_type == "output_constraint":
+                continue
+            applies = not rule.applies_to_tools or tool_name in rule.applies_to_tools
+            if not applies:
+                continue
+            db.add(
+                AuditLog(
+                    business_id=business.id,
+                    conversation_id=conv.id,
+                    customer_identifier=conv.customer_identifier,
+                    event_type="rule_considered",
+                    outcome="passed",
+                    tool_name=tool_name,
+                    fired_rule_id=rule.id,
+                    fired_rule_type=rule.rule_type,
+                    fired_rule_name=rule.name,
+                    tool_args=args,
+                )
+            )
+        db.add(
+            AuditLog(
+                business_id=business.id,
+                conversation_id=conv.id,
+                customer_identifier=conv.customer_identifier,
+                event_type="tool_call",
+                outcome=result.outcome,
+                tool_name=tool_name,
+                tool_args=args,
+            )
+        )
+        if result.outcome == "accepted":
+            conv.had_accepted_action = True
+
+    return result.outcome
+
+
+def _audit_state_update(
+    db: Session, conv: Conversation, business: Business, field: str, value: Any
+) -> None:
+    db.add(
+        AuditLog(
+            business_id=business.id,
+            conversation_id=conv.id,
+            customer_identifier=conv.customer_identifier,
+            event_type="state_update",
+            outcome="info",
+            tool_name="update_conversation_state",
+            tool_args={"field": field, "value": value},
+        )
+    )
+
+
+def _seed_demo_clean_accept(
+    db: Session, business: Business, rules: list[Rule], ref: datetime
+) -> None:
+    """A booking that flows through cleanly — rule_considered rows + accept."""
+    conv = _new_conv(db, business, "Demo · Clean accept #c1a2")
+    _msg(db, conv, "user", "Hi, can I book HVAC service Tuesday at 10 AM, ZIP 32801? I'm the homeowner.")
+    state = {"address_zip": "32801", "is_homeowner": True}
+    conv.state = state
+    _audit_state_update(db, conv, business, "address_zip", "32801")
+    _audit_state_update(db, conv, business, "is_homeowner", True)
+    _audit_for_check(
+        db, conv, business, rules,
+        "book_appointment",
+        {"date": "2026-06-16", "time": "10:00", "service_type": "hvac", "address_zip": "32801"},
+        state,
+        ref,
+    )
+    _msg(db, conv, "assistant", "Got it — booked for Tuesday, June 16 at 10 AM. We'll see you then.")
+
+
+def _seed_demo_block_hours(
+    db: Session, business: Business, rules: list[Rule], ref: datetime
+) -> None:
+    """A booking blocked by Standard hours (Sunday request)."""
+    conv = _new_conv(db, business, "Demo · Sunday block #s2b9")
+    _msg(db, conv, "user", "Can someone come out this Sunday morning to fix my AC?")
+    _audit_for_check(
+        db, conv, business, rules,
+        "book_appointment",
+        {"date": "2026-06-21", "time": "10:00", "service_type": "hvac"},
+        {},
+        ref,
+    )
+    _msg(db, conv, "assistant", "We're closed Sundays — let me know a weekday that works and I'll get you booked.")
+
+
+def _seed_demo_block_zip(
+    db: Session, business: Business, rules: list[Rule], ref: datetime
+) -> None:
+    """A booking blocked by Service area (out-of-area ZIP)."""
+    conv = _new_conv(db, business, "Demo · Out-of-area #z4f1")
+    _msg(db, conv, "user", "HVAC tune-up Tuesday at 10 AM, ZIP 99999.")
+    state = {"address_zip": "99999"}
+    conv.state = state
+    _audit_state_update(db, conv, business, "address_zip", "99999")
+    _audit_for_check(
+        db, conv, business, rules,
+        "book_appointment",
+        {"date": "2026-06-16", "time": "10:00", "service_type": "hvac", "address_zip": "99999"},
+        state,
+        ref,
+    )
+    _msg(db, conv, "assistant", "We don't service ZIP 99999 — try a regional HVAC company in your area.")
+
+
+def _seed_demo_needs_info(
+    db: Session, business: Business, rules: list[Rule], ref: datetime
+) -> None:
+    """A booking that surfaces needs_info, then accepts after state update."""
+    conv = _new_conv(db, business, "Demo · State gather #ng3k")
+    _msg(db, conv, "user", "HVAC Tuesday 10 AM, ZIP 32801.")
+    state = {"address_zip": "32801"}
+    conv.state = state
+    _audit_state_update(db, conv, business, "address_zip", "32801")
+    # First booking attempt — needs_info on is_homeowner
+    args = {"date": "2026-06-16", "time": "10:00", "service_type": "hvac", "address_zip": "32801"}
+    _audit_for_check(db, conv, business, rules, "book_appointment", args, state, ref)
+    _msg(db, conv, "assistant", "Quick check — are you the homeowner at this address?")
+    _msg(db, conv, "user", "Yes, I own.")
+    state["is_homeowner"] = True
+    conv.state = dict(state)
+    _audit_state_update(db, conv, business, "is_homeowner", True)
+    _audit_for_check(db, conv, business, rules, "book_appointment", args, state, ref)
+    _msg(db, conv, "assistant", "Perfect — booked for Tuesday, June 16 at 10 AM.")
+
+
+def _seed_demo_service_not_offered(
+    db: Session, business: Business, rules: list[Rule], ref: datetime
+) -> None:
+    """The exact failure-mode case from the deploy bug: customer asks for
+    a service the business doesn't offer; the agent calls the tool, the
+    engine blocks, the audit captures it."""
+    conv = _new_conv(db, business, "Demo · Out-of-vocab service #pl5m")
+    _msg(db, conv, "user", "Can I book a plumbing appointment for Tuesday?")
+    _audit_for_check(
+        db, conv, business, rules,
+        "book_appointment",
+        {"date": "2026-06-16", "time": "10:00", "service_type": "plumbing"},
+        {},
+        ref,
+    )
+    _msg(db, conv, "assistant", "We don't offer plumbing — only pools and hot tubs. Want me to suggest a referral?")
 
 
 def force_reseed() -> None:

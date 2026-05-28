@@ -40,6 +40,8 @@ class Evidence:
     audit_events: list[dict] = field(default_factory=list)
     state_after: dict[str, Any] = field(default_factory=dict)
     tool_calls: list[str] = field(default_factory=list)
+    # compile_and_probe runner: per-probe results
+    probe_results: list[dict[str, Any]] = field(default_factory=list)
     # Anything else
     extra: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
@@ -232,6 +234,44 @@ class CompileFailureRationaleContains:
 
 
 @dataclass
+class CompileRuleType:
+    """Assert the compiled rule's `rule_type` matches the expected type."""
+
+    expected: str
+
+    def check(self, ev: Evidence) -> AssertionResult:
+        if ev.compile_rule is None:
+            return AssertionResult.fails("no compile_rule on evidence")
+        actual = getattr(ev.compile_rule, "rule_type", None)
+        if actual == self.expected:
+            return AssertionResult.passes(f"rule_type={actual}")
+        return AssertionResult.fails(
+            f"expected rule_type={self.expected}, got {actual!r}"
+        )
+
+
+@dataclass
+class ProbesAllMatch:
+    """For compile_and_probe runs: assert every probe's actual outcome
+    matches the expected outcome the case spelled out."""
+
+    def check(self, ev: Evidence) -> AssertionResult:
+        if not ev.probe_results:
+            return AssertionResult.fails("no probe_results recorded")
+        misses = [p for p in ev.probe_results if not p["match"]]
+        if not misses:
+            return AssertionResult.passes(
+                f"{len(ev.probe_results)}/{len(ev.probe_results)} probes matched"
+            )
+        first = misses[0]
+        return AssertionResult.fails(
+            f"{len(misses)}/{len(ev.probe_results)} probe(s) missed; "
+            f"first miss: expected {first['expect']!r}, got {first['actual']!r} "
+            f"(args={first['args']})"
+        )
+
+
+@dataclass
 class StateFieldSet:
     field: str
     value: Any = None  # if None, just assert it's set; otherwise assert exact value
@@ -383,12 +423,137 @@ async def run_compile_case(case: EvalCase, *, sample_index: int = 0) -> Evidence
     )
 
 
+async def run_compile_and_probe_case(case: EvalCase, *, sample_index: int = 0) -> Evidence:
+    """Full-pipeline runner: NL prompt → compile_rule (LLM) → install on fresh
+    engine → probe with concrete (args, state) tuples → record outcomes.
+
+    Tests the *agent's compile loop end-to-end*, not just the engine in
+    isolation. The owner's plain-English description must (a) compile to a
+    rule of the correct shape, and (b) actually behave as intended when the
+    engine evaluates real bookings against it.
+
+    Case `inputs` shape:
+      {
+        "prompt": "We're closed on Sundays.",
+        "probes": [
+          {"args": {...}, "state": {...}, "expect": "blocked" | "accepted" | "needs_info"},
+          ...
+        ],
+      }
+
+    Evidence captures `compile_kind`, `compile_rule`, and a list of probe
+    results (one per probe) with the actual outcome and whether it matched.
+    """
+    from app.agent.compile_agent import compile_rule
+    from app.schemas.rules import CompiledRule, CompileFailure, parse_rule
+
+    prompt = case.inputs.get("prompt", "")
+    probes = case.inputs.get("probes", []) or []
+
+    try:
+        result = await compile_rule(prompt)
+    except Exception as exc:  # network blip / LLM hiccup
+        return Evidence(
+            case_id=case.id,
+            runner_kind="compile_and_probe",
+            sample_index=sample_index,
+            error=f"{type(exc).__name__}: {exc}",
+        )
+
+    if isinstance(result, CompileFailure):
+        return Evidence(
+            case_id=case.id,
+            runner_kind="compile_and_probe",
+            sample_index=sample_index,
+            compile_kind="failure",
+            compile_failure=result,
+        )
+    if not isinstance(result, CompiledRule):
+        return Evidence(
+            case_id=case.id,
+            runner_kind="compile_and_probe",
+            sample_index=sample_index,
+            error=f"unexpected result type: {type(result).__name__}",
+        )
+
+    compile_kind = "compiled_draft" if result.confidence == "draft" else "compiled"
+
+    # Materialize a RuleSnapshot we can install on a fresh engine.
+    full_rule_dict = {
+        "rule_type": result.rule_type,
+        "name": result.name,
+        "description": result.description,
+        "applies_when_description": result.applies_when_description,
+        "applies_to_tools": result.applies_to_tools,
+        "enforcement_mode": result.enforcement_mode,
+        "priority": result.priority,
+        "parameters": result.parameters,
+        "source_prompt": result.source_prompt,
+    }
+    try:
+        parsed = parse_rule(full_rule_dict)
+    except Exception as exc:
+        return Evidence(
+            case_id=case.id,
+            runner_kind="compile_and_probe",
+            sample_index=sample_index,
+            compile_kind=compile_kind,
+            compile_rule=result,
+            error=f"compiled rule failed schema validation: {exc}",
+        )
+
+    snapshot = RuleSnapshot(
+        id=uuid4(),
+        rule_type=parsed.rule_type,
+        name=parsed.name,
+        parameters=parsed.parameters.model_dump() if hasattr(parsed.parameters, "model_dump") else dict(parsed.parameters),
+        applies_to_tools=list(parsed.applies_to_tools or []),
+        enforcement_mode=parsed.enforcement_mode,
+        priority=parsed.priority,
+    )
+
+    judge = case.inputs.get("judge") or FakeJudgeClient()
+    engine = RuleEngine([snapshot], judge=judge)
+
+    business = case.inputs.get("business") or _DEFAULT_BUSINESS
+    current_time = case.inputs.get("current_time") or _DEFAULT_TIME
+
+    probe_results: list[dict[str, Any]] = []
+    for probe in probes:
+        args = probe.get("args", {})
+        state = probe.get("state", {}) or {}
+        expected = probe.get("expect")
+        tool_name = probe.get("tool_name", "book_appointment")
+        state_obj = ConversationState(**state) if state else ConversationState()
+        outcome = engine.check(tool_name, args, business, state_obj, current_time)
+        probe_results.append(
+            {
+                "args": args,
+                "expect": expected,
+                "actual": outcome.outcome,
+                "primary_rule": outcome.primary_rule_name,
+                "match": expected is None or outcome.outcome == expected,
+            }
+        )
+
+    return Evidence(
+        case_id=case.id,
+        runner_kind="compile_and_probe",
+        sample_index=sample_index,
+        compile_kind=compile_kind,
+        compile_rule=result,
+        probe_results=probe_results,
+    )
+
+
 def run_case(case: EvalCase, *, sample_index: int = 0) -> Evidence:
     """Dispatch to the right runner for the case kind."""
     if case.runner_kind == "engine":
         return run_engine_case(case, sample_index=sample_index)
     if case.runner_kind == "compile":
         return asyncio.run(run_compile_case(case, sample_index=sample_index))
+    if case.runner_kind == "compile_and_probe":
+        return asyncio.run(run_compile_and_probe_case(case, sample_index=sample_index))
     raise NotImplementedError(
         f"runner_kind={case.runner_kind!r} not yet wired in this lib"
     )

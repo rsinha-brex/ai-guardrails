@@ -37,3 +37,4 @@ backend/tests/tier4_corpus/results/
 .vscode/
 .idea/
 .env.deploy
+BUGS_FOUND.md

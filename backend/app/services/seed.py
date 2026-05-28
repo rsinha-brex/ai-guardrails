@@ -1169,9 +1169,11 @@ def _audit_state_update(
 def _seed_demo_clean_accept(
     db: Session, business: Business, rules: list[Rule], ref: datetime
 ) -> None:
-    """A booking that flows through cleanly — rule_considered rows + accept."""
+    """A booking that flows through cleanly — rule_considered rows + accept.
+    Date is +3 days from ref (Mon Jun 15 14:00) to clear the 48h lead time
+    on the HVAC rule."""
     conv = _new_conv(db, business, "Demo · Clean accept #c1a2")
-    _msg(db, conv, "user", "Hi, can I book HVAC service Tuesday at 10 AM, ZIP 32801? I'm the homeowner.")
+    _msg(db, conv, "user", "Hi, can I book HVAC service Thursday at 10 AM, ZIP 32801? I'm the homeowner.")
     state = {"address_zip": "32801", "is_homeowner": True}
     conv.state = state
     _audit_state_update(db, conv, business, "address_zip", "32801")
@@ -1179,11 +1181,11 @@ def _seed_demo_clean_accept(
     _audit_for_check(
         db, conv, business, rules,
         "book_appointment",
-        {"date": "2026-06-16", "time": "10:00", "service_type": "hvac", "address_zip": "32801"},
+        {"date": "2026-06-18", "time": "10:00", "service_type": "hvac", "address_zip": "32801"},
         state,
         ref,
     )
-    _msg(db, conv, "assistant", "Got it — booked for Tuesday, June 16 at 10 AM. We'll see you then.")
+    _msg(db, conv, "assistant", "Got it — booked for Thursday, June 18 at 10 AM. We'll see you then.")
 
 
 def _seed_demo_block_hours(
@@ -1228,14 +1230,15 @@ def _seed_demo_block_zip(
 def _seed_demo_needs_info(
     db: Session, business: Business, rules: list[Rule], ref: datetime
 ) -> None:
-    """A booking that surfaces needs_info, then accepts after state update."""
+    """A booking that surfaces needs_info, then accepts after state update.
+    Date is +3 days from ref to clear the 48h lead time."""
     conv = _new_conv(db, business, "Demo · State gather #ng3k")
-    _msg(db, conv, "user", "HVAC Tuesday 10 AM, ZIP 32801.")
+    _msg(db, conv, "user", "HVAC Thursday 10 AM, ZIP 32801.")
     state = {"address_zip": "32801"}
     conv.state = state
     _audit_state_update(db, conv, business, "address_zip", "32801")
     # First booking attempt — needs_info on is_homeowner (homeowner rule will fire)
-    args = {"date": "2026-06-16", "time": "10:00", "service_type": "hvac", "address_zip": "32801"}
+    args = {"date": "2026-06-18", "time": "10:00", "service_type": "hvac", "address_zip": "32801"}
     _audit_for_check(db, conv, business, rules, "book_appointment", args, state, ref)
     _msg(db, conv, "assistant", "Quick check — are you the homeowner at this address?")
     _msg(db, conv, "user", "Yes, I own.")
@@ -1244,7 +1247,7 @@ def _seed_demo_needs_info(
     conv.state = dict(state)
     _audit_state_update(db, conv, business, "is_homeowner", True)
     _audit_for_check(db, conv, business, rules, "book_appointment", args, state, ref)
-    _msg(db, conv, "assistant", "Perfect — booked for Tuesday, June 16 at 10 AM.")
+    _msg(db, conv, "assistant", "Perfect — booked for Thursday, June 18 at 10 AM.")
 
 
 def _seed_demo_service_not_offered(

@@ -80,7 +80,7 @@ class RuleEngine:
         self.judge = judge
 
     @classmethod
-    def for_business(cls, db_rules: list[Any], *, judge: JudgeClient | None = None) -> "RuleEngine":
+    def for_business(cls, db_rules: list[Any], *, judge: JudgeClient | None = None) -> RuleEngine:
         snapshots = [
             RuleSnapshot(
                 id=r.id,

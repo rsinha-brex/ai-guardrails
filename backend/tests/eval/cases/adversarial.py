@@ -10,14 +10,12 @@ from __future__ import annotations
 
 from tests.eval.businesses import _snap
 from tests.eval.framework import (
-    CompileFailureRationaleContains,
     CompileResultKind,
     EvalCase,
     OutcomeIs,
     register,
 )
 from tests.eval.taxonomy import Family, Group, InputShape
-
 
 # S20 — profanity escalates via regex (already covered indirectly by EV-EX-004,
 # but record it explicitly here for the input-shape coverage cell).

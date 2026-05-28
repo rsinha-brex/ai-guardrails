@@ -18,7 +18,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-
 GTM_URL = "http://127.0.0.1:9223"
 FRONTEND = "http://127.0.0.1:3001"
 

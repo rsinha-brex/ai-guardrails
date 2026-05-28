@@ -144,7 +144,7 @@ export default function ConversationDrillIn({
                   <span className="font-medium">{it.toolName}</span>
                   {it.ruleName && <span className="opacity-80"> — rule “{it.ruleName}”</span>}
                 </div>
-                {it.userMsg && <div className="text-xs italic mt-1 opacity-90">"{it.userMsg}"</div>}
+                {it.userMsg && <div className="text-xs italic mt-1 opacity-90">&ldquo;{it.userMsg}&rdquo;</div>}
                 {it.internal && (
                   <div className="text-xs mt-1 opacity-70 font-mono">{it.internal}</div>
                 )}

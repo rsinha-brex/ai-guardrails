@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -8,7 +8,6 @@ import pytest
 
 from app.engine.engine import RuleEngine, RuleSnapshot
 from app.engine.expressions import FakeJudgeClient
-
 
 NY = ZoneInfo("America/New_York")
 

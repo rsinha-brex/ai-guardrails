@@ -37,7 +37,6 @@ from tests.eval.framework import (
 )
 from tests.eval.taxonomy import Family, Group, InputShape
 
-
 # 1. business_hours — the simplest typed rule
 register(
     EvalCase(

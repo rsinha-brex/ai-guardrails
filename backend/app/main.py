@@ -12,11 +12,13 @@ from app.routes import (
     activity,
     admin,
     businesses,
-    compile as compile_route,
     conversations,
     health,
     rules,
     test_cases,
+)
+from app.routes import (
+    compile as compile_route,
 )
 from app.services import seed
 

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import pytest
-
-from app.engine.expressions import EvalContext, FakeJudgeClient, evaluate
 from pydantic import TypeAdapter
 
-from app.engine.expressions import Expression
+from app.engine.expressions import EvalContext, Expression, FakeJudgeClient, evaluate
 
 
 def _expr(payload: dict):

@@ -12,7 +12,6 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-
 SECTION_RANGES = [
     ("1A Templates",            "R-001", "R-060"),
     ("1B NL compile",           "R-061", "R-120"),
@@ -47,7 +46,7 @@ def render(jsonl_path: Path) -> str:
                 rows.append(json.loads(line))
 
     out: list[str] = []
-    out.append(f"# AI Guardrails — 500-Test Corpus Results\n")
+    out.append("# AI Guardrails — 500-Test Corpus Results\n")
     out.append(f"_Generated from `{jsonl_path.name}` · {len(rows)} rows_\n")
 
     # ----- Summary

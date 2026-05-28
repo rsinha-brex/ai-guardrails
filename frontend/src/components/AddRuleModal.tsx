@@ -127,8 +127,14 @@ export function AddRuleModal({ businessId, onClose, onCreated }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/30 backdrop-blur-[1px] p-6 overflow-y-auto">
-      <div className="w-full max-w-4xl max-h-[88vh] rounded-[var(--radius-lg)] bg-bg-elevated shadow-lg overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-ink/30 backdrop-blur-[1px] p-6 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-4xl max-h-[88vh] rounded-[var(--radius-lg)] bg-bg-elevated shadow-lg overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <h3 className="font-display text-xl text-ink">Add a new rule</h3>
           <button

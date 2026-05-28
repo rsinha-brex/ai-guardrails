@@ -12,17 +12,16 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 import time
 import traceback
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from tests.tier4_corpus.spec import SPECS, TestSpec
-from tests.tier4_corpus.ui import BUSINESSES, GTMError, UI
+from tests.tier4_corpus.ui import BUSINESSES, UI, GTMError
 
 log = logging.getLogger("corpus-runner")
 
@@ -502,7 +501,7 @@ def main(argv: list[str] | None = None) -> int:
     # Stream JSONL writes so killing mid-run preserves data.
     out_dir = Path(__file__).resolve().parent / "results"
     out_dir.mkdir(exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out_path = out_dir / f"{stamp}.jsonl"
 
     results: list = []

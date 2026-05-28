@@ -1,11 +1,10 @@
 """Conversation routes — create, post message (SSE), reset, list."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -21,7 +20,6 @@ from app.agent.tools import AgentDeps
 from app.auth import authenticate
 from app.db import get_session
 from app.models import Business, Conversation, Message
-from app.schemas.conversation_state import ConversationState
 from app.services import audit
 
 log = logging.getLogger(__name__)
@@ -120,7 +118,7 @@ def create_conversation(
         business_id=conv.business_id,
         conversation_id=conv.id,
         customer_identifier=conv.customer_identifier,
-        current_time=datetime.now(timezone.utc),
+        current_time=datetime.now(UTC),
     )
     conv.system_prompt_snapshot = system_prompt_for(deps_for_snapshot)
     db.commit()
@@ -206,7 +204,7 @@ async def post_message(
     user_msg = Message(conversation_id=conv.id, role="user", content=body.content)
     db.add(user_msg)
     conv.message_count += 1
-    conv.last_message_at = datetime.now(timezone.utc)
+    conv.last_message_at = datetime.now(UTC)
     db.flush()
 
     # Load prior message history for the agent.
@@ -221,7 +219,7 @@ async def post_message(
         business_id=conv.business_id,
         conversation_id=conv.id,
         customer_identifier=conv.customer_identifier,
-        current_time=datetime.now(timezone.utc),
+        current_time=datetime.now(UTC),
         state=dict(conv.state or {}),
         judge=_JUDGE,
     )
@@ -250,7 +248,7 @@ async def post_message(
             assistant = Message(conversation_id=conv.id, role="assistant", content=full_text)
             db.add(assistant)
             conv.message_count += 1
-            conv.last_message_at = datetime.now(timezone.utc)
+            conv.last_message_at = datetime.now(UTC)
             if deps.state_dirty:
                 conv.state = dict(deps.state)
             if deps.accepted_action:

@@ -9,7 +9,7 @@ whitelist-via-composition.
 from __future__ import annotations
 
 from app.engine.expressions import FakeJudgeClient
-from tests.eval.businesses import _snap, hours_mon_fri
+from tests.eval.businesses import _snap
 from tests.eval.framework import (
     BlockedByRule,
     EvalCase,
@@ -18,7 +18,6 @@ from tests.eval.framework import (
     register,
 )
 from tests.eval.taxonomy import Family, Group, InputShape
-
 
 # E1 — time-relative trigger (less than 24h OR more than 90 days out)
 register(

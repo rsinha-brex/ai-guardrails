@@ -5,7 +5,6 @@ from tests.eval.businesses import hoa_approval_required
 from tests.eval.framework import BlockedByRule, EvalCase, OutcomeIs, register
 from tests.eval.taxonomy import Family, Group, InputShape
 
-
 register(
     EvalCase(
         id="EV-C-001",

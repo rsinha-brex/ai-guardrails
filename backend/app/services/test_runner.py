@@ -9,8 +9,7 @@ Strategy (from § 10):
 """
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -52,7 +51,7 @@ async def run_test_case(db: Session, test_case_id: UUID) -> dict[str, Any]:
         business_id=conv.business_id,
         conversation_id=conv.id,
         customer_identifier=conv.customer_identifier,
-        current_time=datetime.now(timezone.utc),
+        current_time=datetime.now(UTC),
         judge=_JUDGE,
     )
     user_msg = Message(conversation_id=conv.id, role="user", content=tc.customer_message)
@@ -112,7 +111,7 @@ async def run_test_case(db: Session, test_case_id: UUID) -> dict[str, Any]:
     expected_norm = "block" if expected == "block" else expected
     passed = actual_outcome == expected_norm
 
-    tc.last_run_at = datetime.now(timezone.utc)
+    tc.last_run_at = datetime.now(UTC)
     tc.last_run_result = "pass" if passed else "fail"
     tc.last_run_details = {
         "expected": expected_norm,

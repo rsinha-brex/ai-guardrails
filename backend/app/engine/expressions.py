@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import operator
 import re
-from datetime import datetime, time
-from typing import Annotated, Any, Literal, Protocol, Union
+from datetime import time
+from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 FieldRef = str  # "args.x" / "state.x" / "business.x"
 
 
-def resolve_field(ref: FieldRef, ctx: "EvalContext") -> Any:
+def resolve_field(ref: FieldRef, ctx: EvalContext) -> Any:
     if "." not in ref:
         raise ValueError(f"Bad field ref {ref!r}; expected '<scope>.<name>'")
     scope, _, name = ref.partition(".")
@@ -167,17 +167,17 @@ class CmpRegex(_OpBase):
 
 class AllOf(_OpBase):
     op: Literal["all_of"] = "all_of"
-    children: list["Expression"]
+    children: list[Expression]
 
 
 class AnyOf(_OpBase):
     op: Literal["any_of"] = "any_of"
-    children: list["Expression"]
+    children: list[Expression]
 
 
 class NotExpr(_OpBase):
     op: Literal["not"] = "not"
-    child: "Expression"
+    child: Expression
 
 
 class LLMJudge(_OpBase):
@@ -187,22 +187,7 @@ class LLMJudge(_OpBase):
 
 
 Expression = Annotated[
-    Union[
-        CmpEq,
-        CmpNeq,
-        CmpGt,
-        CmpGte,
-        CmpLt,
-        CmpLte,
-        CmpIn,
-        CmpNotIn,
-        CmpContains,
-        CmpRegex,
-        AllOf,
-        AnyOf,
-        NotExpr,
-        LLMJudge,
-    ],
+    CmpEq | CmpNeq | CmpGt | CmpGte | CmpLt | CmpLte | CmpIn | CmpNotIn | CmpContains | CmpRegex | AllOf | AnyOf | NotExpr | LLMJudge,
     Field(discriminator="op"),
 ]
 

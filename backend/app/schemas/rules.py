@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.engine.expressions import Expression
-
 
 # --------------------------------------------------------------------------- #
 # Enums shared by rule parameters
@@ -163,15 +162,7 @@ class OutputConstraintRule(_RuleBase):
 
 
 BaseRule = Annotated[
-    Union[
-        BusinessHoursRule,
-        ServiceAreaZipRule,
-        ServicesOfferedRule,
-        CustomerEligibilityRule,
-        LeadTimeRule,
-        ConditionalBlockRule,
-        OutputConstraintRule,
-    ],
+    BusinessHoursRule | ServiceAreaZipRule | ServicesOfferedRule | CustomerEligibilityRule | LeadTimeRule | ConditionalBlockRule | OutputConstraintRule,
     Field(discriminator="rule_type"),
 ]
 

@@ -8,7 +8,7 @@ Returning needs_info trumps blocking — the engine aggregates accordingly.
 """
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 

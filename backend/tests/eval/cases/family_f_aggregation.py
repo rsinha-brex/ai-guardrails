@@ -17,7 +17,6 @@ from tests.eval.framework import (
 )
 from tests.eval.taxonomy import Family, Group, InputShape
 
-
 register(
     EvalCase(
         id="EV-F-001",

@@ -30,7 +30,13 @@ export function useResource<T>(
   const [loading, setLoading] = useState(false);
 
   const fetcherRef = useRef(fetcher);
-  fetcherRef.current = fetcher;
+  // Update the ref in an effect — React 19's strict hook rules forbid
+  // mutating refs during render. Functionally equivalent: the ref is read
+  // by `run()` which only fires inside an effect or event handler, so the
+  // value is always the latest committed fetcher.
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  });
 
   const run = useCallback(() => {
     setLoading(true);
@@ -42,10 +48,13 @@ export function useResource<T>(
       })
       .catch((e: unknown) => setError(String(e)))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    // The standard "fetch on mount + when deps change" pattern. React 19
+    // flags any setState-in-effect — but that's exactly what a data-fetch
+    // hook does, by definition. Suppressed locally with a clear reason.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

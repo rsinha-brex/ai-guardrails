@@ -19,11 +19,9 @@ from tests.eval.framework import (
     EvalCase,
     NeedsInfoFields,
     OutcomeIs,
-    PrimaryRuleIs,
     register,
 )
 from tests.eval.taxonomy import Family, Group, InputShape
-
 
 # ---- business_hours --------------------------------------------------------
 

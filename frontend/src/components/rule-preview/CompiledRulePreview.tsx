@@ -32,6 +32,11 @@ export function CompiledRulePreview({ rule, onSave, onEdit, saving, showEditProm
   const [draft, setDraft] = useState(() => initialDraft(rule));
 
   useEffect(() => {
+    // Resync the draft when the parent passes a different rule (e.g. the
+    // owner edits the prompt and recompiles). React 19 flags any
+    // setState-in-effect, but the alternative — using a `key` prop to
+    // remount — would lose focus on whichever field is being typed in.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraft(initialDraft(rule));
   }, [rule]);
 

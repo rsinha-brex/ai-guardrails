@@ -7,7 +7,6 @@ import {
   Loader2,
   Ban,
   CheckCircle2,
-  ArrowRight,
   Info,
   HelpCircle,
   AlertCircle,
@@ -46,7 +45,7 @@ export function LiveActivityRail({
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {events.length === 0 && !streaming && (
           <div className="text-ink-muted text-xs italic px-2 py-6 text-center">
-            No tool activity yet. Send a message to see the agent's tool calls and rule fires here.
+            No tool activity yet. Send a message to see the agent&apos;s tool calls and rule fires here.
           </div>
         )}
         {streaming && events.length === 0 && (

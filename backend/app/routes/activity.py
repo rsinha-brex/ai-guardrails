@@ -36,7 +36,7 @@ class ConversationSummary(BaseModel):
     outcome: str  # blocked | accepted | open
 
     @classmethod
-    def from_row(cls, c: Conversation) -> "ConversationSummary":
+    def from_row(cls, c: Conversation) -> ConversationSummary:
         outcome = "open"
         if c.had_blocked_action:
             outcome = "blocked"

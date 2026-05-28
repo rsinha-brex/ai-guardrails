@@ -192,7 +192,7 @@ export function TestCasesPanel({ rule, businessId, onClose, onRuleUpdated }: Pro
                     </button>
                   </div>
                 </div>
-                <div className="text-sm italic text-ink-soft mt-1">"{c.customer_message}"</div>
+                <div className="text-sm italic text-ink-soft mt-1">&ldquo;{c.customer_message}&rdquo;</div>
                 <div className="text-[11px] text-ink-muted mt-1 font-mono">
                   expect: {c.expected_outcome}
                   {c.last_run_details && (typeof c.last_run_details === "object") && "actual" in (c.last_run_details as Record<string, unknown>) && (
@@ -322,7 +322,7 @@ function RefinementDiff({
           )}
           {res.failure && (
             <div className="rounded-md border border-amber/40 bg-amber-tint p-3 text-amber text-xs">
-              Couldn't recompile — {res.failure.rationale}
+              Couldn&apos;t recompile — {res.failure.rationale}
             </div>
           )}
         </div>

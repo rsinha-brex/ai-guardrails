@@ -14,7 +14,8 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -50,8 +51,8 @@ class Business(Base):
     created_at: Mapped[datetime] = _now_col()
     updated_at: Mapped[datetime] = _now_col(on_update=True)
 
-    rules: Mapped[list["Rule"]] = relationship(back_populates="business", cascade="all,delete-orphan")
-    conversations: Mapped[list["Conversation"]] = relationship(back_populates="business")
+    rules: Mapped[list[Rule]] = relationship(back_populates="business", cascade="all,delete-orphan")
+    conversations: Mapped[list[Conversation]] = relationship(back_populates="business")
 
 
 # --------------------------------------------------------------------------- #
@@ -82,7 +83,7 @@ class Rule(Base):
     updated_at: Mapped[datetime] = _now_col(on_update=True)
 
     business: Mapped[Business] = relationship(back_populates="rules")
-    test_cases: Mapped[list["TestCase"]] = relationship(
+    test_cases: Mapped[list[TestCase]] = relationship(
         back_populates="rule", cascade="all,delete-orphan"
     )
 
@@ -123,7 +124,7 @@ class Conversation(Base):
     updated_at: Mapped[datetime] = _now_col(on_update=True)
 
     business: Mapped[Business] = relationship(back_populates="conversations")
-    messages: Mapped[list["Message"]] = relationship(
+    messages: Mapped[list[Message]] = relationship(
         back_populates="conversation", cascade="all,delete-orphan"
     )
 

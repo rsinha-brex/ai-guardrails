@@ -13,9 +13,6 @@ order-independent.
 """
 from __future__ import annotations
 
-from uuid import uuid4
-
-from app.engine.engine import RuleEngine, RuleSnapshot
 from tests.eval.businesses import hours_mon_fri, zip_allow_deny
 from tests.eval.framework import (
     CompileResultKind,
@@ -24,7 +21,6 @@ from tests.eval.framework import (
     register,
 )
 from tests.eval.taxonomy import Family, Group, InputShape
-
 
 # E11 — cross-conversation lookup (compile must refuse)
 register(

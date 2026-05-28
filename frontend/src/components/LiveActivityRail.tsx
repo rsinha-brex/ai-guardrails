@@ -92,9 +92,14 @@ function ActivityCard({ event }: { event: AuditEvent }) {
           {event.fired_rule_name}
         </div>
       )}
-      {event.outcome !== "info" && event.outcome !== "accepted" && (
+      {event.outcome !== "info" && event.outcome !== "accepted" && event.outcome !== "passed" && (
         <div className="text-[10px] uppercase tracking-widest font-mono opacity-80">
           {STATUS_LABEL_UPPER[statusKeyOr(event.outcome)]}
+        </div>
+      )}
+      {event.event_type === "rule_considered" && (
+        <div className="text-[10px] uppercase tracking-widest font-mono opacity-70">
+          {event.outcome === "not_applicable" ? "did not apply" : "passed"}
         </div>
       )}
       {event.internal_reason && (

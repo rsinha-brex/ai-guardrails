@@ -16,7 +16,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.tools import Tool
 from sqlalchemy import select
 
-from app.engine.engine import RuleEngine
+from app.engine.engine import RuleEngine, RuleSnapshot
 from app.models import Business, Conversation, Rule
 from app.schemas.conversation_state import STATE_FIELDS, ConversationState
 from app.services import audit
@@ -81,6 +81,39 @@ def _audit(deps: AgentDeps, **kw: Any) -> None:
     )
 
 
+def _rule_scope_skipped(rule: RuleSnapshot, args: dict[str, Any], state: Any) -> bool:
+    """True if the rule's scope filter excluded this request before evaluation.
+
+    Audit rows say "passed" when a rule actually ran its full evaluation and
+    returned `OutcomePass`, and "not_applicable" when the rule short-circuited
+    via a scope filter and never evaluated. Without this distinction, every
+    rule looks like it ran, even if the only reason it didn't block is that
+    it doesn't apply to this service type or precondition.
+
+    Patterns we detect:
+    - `lead_time_minimum.applies_to_service_types`: list, request's
+      service_type not in the list.
+    - `customer_eligibility.applies_to_service_types`: same shape.
+    - `conditional_block.required_precondition`: when set, the rule's
+      `evaluate_conditional_block` returns pass without evaluating trigger
+      if the precondition is false. We mirror that check here.
+    """
+    params = rule.parameters or {}
+    if rule.rule_type in ("lead_time_minimum", "customer_eligibility"):
+        scope = params.get("applies_to_service_types")
+        if scope is not None and args.get("service_type") not in set(scope):
+            return True
+    if rule.rule_type == "conditional_block":
+        precond = params.get("required_precondition")
+        if precond is not None:
+            from app.engine.expressions import EvalContext, evaluate
+
+            ctx = EvalContext(args=args, state=state, business=None)
+            if not evaluate(precond, ctx):
+                return True
+    return False
+
+
 def _check_and_audit(
     deps: AgentDeps,
     tool_name: str,
@@ -125,10 +158,16 @@ def _check_and_audit(
         for rule in engine.rules:
             if not rule.applies(tool_name) or rule.rule_type == "output_constraint":
                 continue
+            # Distinguish "rule actually evaluated and passed" from "rule
+            # was scope-skipped because its filter excluded this request".
+            # Owners debugging accepts deserve to know the difference.
+            considered_outcome = (
+                "not_applicable" if _rule_scope_skipped(rule, args, state_obj) else "passed"
+            )
             _audit(
                 deps,
                 event_type="rule_considered",
-                outcome="passed",
+                outcome=considered_outcome,
                 tool_name=tool_name,
                 fired_rule_id=rule.id,
                 fired_rule_type=rule.rule_type,

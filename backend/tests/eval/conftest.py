@@ -139,7 +139,14 @@ def pytest_report_teststatus(report, config):  # type: ignore[no-untyped-def]
     characters from pytest's terminal reporter just add noise on top of that,
     so we return empty short-form strings for any case nodeid we own. The
     long-form string still appears in the failure summary at the end.
+
+    IMPORTANT: only intercept the `call` phase. Pytest invokes this hook for
+    setup, call, and teardown — if we returned "passed" for all three, the
+    test summary would triple-count (44 cases → 132 "passed"). Returning
+    None for setup/teardown lets pytest tally each test exactly once.
     """
+    if report.when != "call":
+        return None
     if report.nodeid in _progress_state["by_id"]:
         if report.passed:
             return "passed", "", ""

@@ -36,3 +36,4 @@ backend/tests/tier4_corpus/results/
 # Editor
 .vscode/
 .idea/
+.env.deploy

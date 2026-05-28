@@ -5,6 +5,12 @@ owners describe rules in plain English, the platform compiles them into
 structured rules, and a Pydantic-AI chat agent enforces those rules on every
 tool call — with a complete audit trail.
 
+> **Live demo:** <https://ai-guardrails-ten.vercel.app>
+> **Backend:** <https://backend-production-baca.up.railway.app/health>
+>
+> Deploy: Railway (FastAPI + Postgres) + Vercel (Next.js 16). Source on
+> GitHub at <https://github.com/rsinha-brex/ai-guardrails>.
+
 > **Status:** functional take-home submission. Backend + frontend run locally,
 > 76-case eval suite (engine + compile + agent layers) passes green, observable
 > activity rail surfaces every rule decision in real time.
